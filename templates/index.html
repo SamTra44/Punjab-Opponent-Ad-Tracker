@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Punjab Opponent Ad Tracker · War Room</title>
+  <style>
+    /* ===================== THEME ===================== */
+    :root{
+      --bg:#070a0f; --panel:#0f151d; --panel2:#131b25; --line:#1e2a38;
+      --txt:#e6edf3; --muted:#8b98a8; --accent:#00e5a0; --accent2:#2f81f7;
+      --danger:#ff5d6c; --warn:#ffb454;
+      --bjp:#ff7a18; --inc:#19a7e0; --sad:#1fc16b; --aap:#3b6cff; --other:#9aa6b2;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);
+      color:var(--txt);font-size:14px;line-height:1.4;
+      background-image:radial-gradient(circle at 0% 0%,rgba(0,229,160,.05),transparent 35%),
+                       radial-gradient(circle at 100% 0%,rgba(47,129,247,.05),transparent 35%);
+    }
+    a{color:inherit;text-decoration:none}
+
+    /* ===================== TOP BAR ===================== */
+    header{
+      position:sticky;top:0;z-index:30;background:rgba(7,10,15,.92);
+      backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+      padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    }
+    .brand{display:flex;flex-direction:column}
+    .brand .t{font-weight:800;letter-spacing:.5px;font-size:16px}
+    .brand .s{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+    .live{
+      display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;
+      color:var(--accent);text-transform:uppercase;letter-spacing:1px;
+      padding:5px 11px;border:1px solid rgba(0,229,160,.35);border-radius:20px;
+      background:rgba(0,229,160,.07);
+    }
+    .live .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
+      box-shadow:0 0 0 0 rgba(0,229,160,.6);animation:pulse 1.8s infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,229,160,.6)}
+      70%{box-shadow:0 0 0 10px rgba(0,229,160,0)}100%{box-shadow:0 0 0 0 rgba(0,229,160,0)}}
+    .demo-pill{color:var(--warn);border-color:rgba(255,180,84,.4);
+      background:rgba(255,180,84,.08)}
+    .demo-pill .dot{background:var(--warn);animation:none}
+    .clock{margin-left:auto;font-variant-numeric:tabular-nums;font-size:13px;
+      color:var(--muted);text-align:right}
+    .clock .d{font-size:11px}
+    .topbtn{padding:7px 13px;border:1px solid var(--line);border-radius:8px;
+      background:var(--panel2);color:var(--txt);font-size:12px;cursor:pointer}
+    .topbtn:hover{border-color:var(--accent)}
+    .topbtn.ghost{color:var(--muted)}
+
+    /* ===================== DEMO BANNER ===================== */
+    #demoBanner{display:none;background:rgba(255,180,84,.12);
+      border-bottom:1px solid rgba(255,180,84,.4);color:var(--warn);
+      padding:8px 22px;font-size:12.5px;text-align:center;font-weight:600}
+    #demoBanner.show{display:block}
+
+    /* ===================== STAT STRIP ===================== */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;
+      padding:16px 22px}
+    .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+      padding:14px 16px;position:relative;overflow:hidden}
+    .stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+      background:var(--accent)}
+    .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;
+      letter-spacing:.5px}
+    .stat .v{font-size:24px;font-weight:800;margin-top:5px}
+    .stat .v.sm{font-size:18px}
+    .stat:nth-child(2):before{background:var(--bjp)}
+    .stat:nth-child(3):before{background:var(--accent2)}
+    .stat:nth-child(4):before{background:var(--warn)}
+    .stat:nth-child(5):before{background:var(--inc)}
+
+    /* ===================== LAYOUT ===================== */
+    .wrap{display:grid;grid-template-columns:1fr 320px;gap:16px;
+      padding:4px 22px 40px}
+    @media(max-width:1100px){.wrap{grid-template-columns:1fr}
+      .stats{grid-template-columns:repeat(2,1fr)}}
+
+    /* ===================== FILTER BAR ===================== */
+    .filters{background:var(--panel);border:1px solid var(--line);
+      border-radius:12px;padding:14px 16px;margin-bottom:14px;
+      display:flex;flex-direction:column;gap:12px}
+    .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .flabel{font-size:11px;color:var(--muted);text-transform:uppercase;
+      letter-spacing:.5px;min-width:64px}
+    .chip{padding:6px 13px;border:1px solid var(--line);border-radius:20px;
+      background:var(--panel2);color:var(--muted);font-size:12.5px;cursor:pointer;
+      font-weight:600;transition:.15s}
+    .chip:hover{border-color:var(--accent);color:var(--txt)}
+    .chip.active{background:var(--accent);color:#04130d;border-color:var(--accent)}
+    .chip.bjp.active{background:var(--bjp);border-color:var(--bjp);color:#1a0a00}
+    .chip.inc.active{background:var(--inc);border-color:var(--inc);color:#02141d}
+    .chip.sad.active{background:var(--sad);border-color:var(--sad);color:#02160c}
+    .chip.aap.active{background:var(--aap);border-color:var(--aap);color:#fff}
+    .search{flex:1;min-width:180px;padding:9px 13px;background:#0a0f15;
+      border:1px solid var(--line);border-radius:8px;color:var(--txt);outline:none}
+    .search:focus{border-color:var(--accent)}
+    .cnt{font-size:10px;opacity:.7;font-weight:700}
+    .srcbadge{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:5px;
+      letter-spacing:.5px;text-transform:uppercase}
+    .srcbadge.off{background:rgba(0,229,160,.15);color:var(--accent);
+      border:1px solid rgba(0,229,160,.4)}
+    .srcbadge.non{background:rgba(154,166,178,.12);color:var(--muted);
+      border:1px solid var(--line)}
+    .chip.stance-against.active{background:var(--danger);border-color:var(--danger);color:#fff}
+    .chip.stance-support.active{background:var(--sad);border-color:var(--sad);color:#02160c}
+    .chip.stance-neutral.active{background:var(--muted);border-color:var(--muted);color:#0a0f15}
+    .stbadge{font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:5px;
+      letter-spacing:.3px;text-transform:uppercase}
+    .stbadge.against{background:rgba(255,93,108,.16);color:var(--danger);
+      border:1px solid rgba(255,93,108,.45)}
+    .stbadge.support{background:rgba(31,193,107,.16);color:var(--sad);
+      border:1px solid rgba(31,193,107,.45)}
+    .stbadge.neutral{background:rgba(154,166,178,.12);color:var(--muted);
+      border:1px solid var(--line)}
+    .stbadge.unknown{background:rgba(154,166,178,.08);color:var(--muted);
+      border:1px solid var(--line)}
+    .summary{font-size:12px;color:#9dc3ff;font-style:italic;
+      border-left:2px solid var(--accent2);padding-left:8px;margin:2px 0}
+    /* Narrative battlefield */
+    .bf{margin-bottom:13px}
+    .bf .h{display:flex;justify-content:space-between;font-size:12.5px;
+      font-weight:700;margin-bottom:5px}
+    .bf .h .c{color:var(--accent);font-variant-numeric:tabular-nums}
+    .bf .split{display:flex;height:8px;border-radius:5px;overflow:hidden;
+      background:#0a0f15}
+    .bf .split .ag{background:var(--danger)}
+    .bf .split .su{background:var(--sad)}
+    .bf .split .ne{background:var(--muted)}
+    .bf .sum{font-size:11px;color:var(--muted);margin-top:5px;font-style:italic}
+    .bf .leg{font-size:10px;color:var(--muted);margin-top:3px}
+
+    /* ===================== AD GRID ===================== */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+      gap:14px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+      padding:15px;display:flex;flex-direction:column;gap:10px;
+      transition:.15s;position:relative}
+    .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .card .top{display:flex;align-items:center;gap:10px}
+    .pavatar{width:38px;height:38px;border-radius:9px;display:flex;
+      align-items:center;justify-content:center;font-weight:800;font-size:14px;
+      color:#000;flex-shrink:0}
+    .pname{font-weight:700;font-size:13.5px}
+    .phandle{font-size:11.5px;color:var(--muted)}
+    .ptag{margin-left:auto;font-size:10px;font-weight:800;padding:3px 9px;
+      border-radius:6px;text-transform:uppercase;letter-spacing:.5px}
+    .body{font-size:13px;color:#cdd6e0;line-height:1.5;
+      display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;
+      overflow:hidden}
+    .theme{align-self:flex-start;font-size:11px;padding:4px 10px;border-radius:6px;
+      background:rgba(47,129,247,.12);border:1px solid rgba(47,129,247,.3);
+      color:#9dc3ff;font-weight:600}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11.5px;
+      border-top:1px solid var(--line);padding-top:10px}
+    .meta .lbl{color:var(--muted);font-size:10px;text-transform:uppercase;
+      letter-spacing:.5px}
+    .meta .val{font-weight:700;margin-top:2px}
+    .pills{display:flex;flex-wrap:wrap;gap:5px}
+    .mini{font-size:10.5px;padding:2px 7px;border-radius:5px;background:var(--panel2);
+      border:1px solid var(--line);color:var(--muted)}
+    .viewbtn{margin-top:4px;text-align:center;padding:9px;border-radius:8px;
+      background:var(--panel2);border:1px solid var(--line);font-size:12.5px;
+      font-weight:700;color:var(--accent);cursor:pointer}
+    .viewbtn:hover{background:var(--accent);color:#04130d;border-color:var(--accent)}
+
+    /* ===================== SIDEBAR ===================== */
+    .side{display:flex;flex-direction:column;gap:14px}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+      padding:15px}
+    .panel h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;
+      color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:7px}
+    .panel h3:before{content:"";width:6px;height:6px;border-radius:50%;
+      background:var(--accent)}
+    .bar{margin-bottom:12px}
+    .bar .row{display:flex;justify-content:space-between;font-size:12px;
+      margin-bottom:5px}
+    .bar .row b{font-weight:700}
+    .track{height:9px;background:#0a0f15;border-radius:6px;overflow:hidden}
+    .fill{height:100%;border-radius:6px;transition:width .6s ease}
+    .themeitem{display:flex;align-items:center;gap:10px;margin-bottom:11px;
+      font-size:12.5px}
+    .themeitem .n{margin-left:auto;font-weight:800;color:var(--accent);
+      font-variant-numeric:tabular-nums}
+    .themedot{width:9px;height:9px;border-radius:50%;background:var(--accent2)}
+    .alert{display:flex;gap:9px;padding:9px;border-radius:8px;margin-bottom:9px;
+      background:rgba(255,93,108,.08);border:1px solid rgba(255,93,108,.25);
+      font-size:12px}
+    .alert.warn{background:rgba(255,180,84,.08);border-color:rgba(255,180,84,.25)}
+    .alert .ic{font-size:14px}
+    .alert .at{color:var(--muted);font-size:10.5px;margin-top:3px}
+
+    /* ===================== SPINNER / EMPTY ===================== */
+    .spinner{display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:70px 20px;gap:16px;grid-column:1/-1}
+    .ring{width:42px;height:42px;border:4px solid var(--line);
+      border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--muted)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <!-- ===================== HEADER ===================== -->
+  <header>
+    <div class="brand">
+      <div class="t">🛰️ PUNJAB OPPONENT AD TRACKER</div>
+      <div class="s">AAP Punjab · Digital War Room</div>
+    </div>
+    <div id="liveInd" class="live"><span class="dot"></span><span id="liveText">Live Monitoring</span></div>
+    <div class="clock">
+      <div id="clockTime">--:--:--</div>
+      <div class="d" id="clockDate">—</div>
+    </div>
+    <button class="topbtn" id="refreshBtn">↻ Refresh</button>
+    <a class="topbtn ghost" href="/logout">Logout</a>
+  </header>
+
+  <!-- ===================== DEMO BANNER ===================== -->
+  <div id="demoBanner">
+    ⚠️ DEMO MODE — sample data dikhayi ja rahi hai. Live data ke liye
+    <b>META_ACCESS_TOKEN</b> set karo. <span id="demoReason" class="muted"></span>
+  </div>
+
+  <!-- ===================== STAT STRIP ===================== -->
+  <div class="stats">
+    <div class="stat"><div class="k">Total Active Ads</div><div class="v" id="sTotal">—</div></div>
+    <div class="stat"><div class="k">Top Spender</div><div class="v sm" id="sTopSpender">—</div></div>
+    <div class="stat"><div class="k">Est. Total Spend</div><div class="v sm" id="sSpend">—</div></div>
+    <div class="stat"><div class="k">Parties Tracked</div><div class="v" id="sParties">—</div></div>
+    <div class="stat"><div class="k">Last Refresh</div><div class="v sm" id="sUpdated">—</div></div>
+  </div>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="wrap">
+    <!-- LEFT: filters + ad grid -->
+    <div>
+      <div class="filters">
+        <div class="frow">
+          <span class="flabel">Party</span>
+          <div class="chip active" data-party="ALL" onclick="setParty(this)">All</div>
+          <div class="chip bjp" data-party="BJP" onclick="setParty(this)">BJP</div>
+          <div class="chip inc" data-party="INC" onclick="setParty(this)">Congress</div>
+          <div class="chip sad" data-party="SAD" onclick="setParty(this)">SAD</div>
+          <div class="chip aap" data-party="AAP" onclick="setParty(this)">AAP</div>
+          <div class="chip" data-party="OTHER" onclick="setParty(this)">Other</div>
+        </div>
+        <div class="frow">
+          <span class="flabel">Source</span>
+          <div class="chip active" data-source="ALL" onclick="setSource(this)">All Pages <span id="cAll" class="cnt"></span></div>
+          <div class="chip" data-source="official" onclick="setSource(this)">✅ Official <span id="cOff" class="cnt"></span></div>
+          <div class="chip" data-source="non-official" onclick="setSource(this)">📰 Non-Official <span id="cNon" class="cnt"></span></div>
+        </div>
+        <div class="frow" id="stanceRow">
+          <span class="flabel">Stance <span style="font-size:9px;color:var(--accent)">AI</span></span>
+          <div class="chip active" data-stance="ALL" onclick="setStance(this)">All</div>
+          <div class="chip stance-against" data-stance="against" onclick="setStance(this)">⚔️ Against AAP <span id="cAg" class="cnt"></span></div>
+          <div class="chip stance-support" data-stance="support" onclick="setStance(this)">🤝 Pro-AAP <span id="cSu" class="cnt"></span></div>
+          <div class="chip stance-neutral" data-stance="neutral" onclick="setStance(this)">😐 Neutral <span id="cNe" class="cnt"></span></div>
+          <span id="aiOff" style="display:none;font-size:11px;color:var(--warn)">⚠️ AI off — set ANTHROPIC_API_KEY</span>
+        </div>
+        <div class="frow">
+          <span class="flabel">Region</span>
+          <div id="regionChips" style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="chip active" data-region="ALL" onclick="setRegion(this)">All Regions</div>
+          </div>
+        </div>
+        <div class="frow">
+          <span class="flabel">Search</span>
+          <input class="search" id="searchBox" placeholder="Search ad text, page, theme..."
+                 oninput="render()" />
+        </div>
+      </div>
+
+      <div class="grid" id="adGrid">
+        <div class="spinner"><div class="ring"></div>
+          <div class="muted">Fetching latest opponent ads...</div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: sidebar -->
+    <div class="side">
+      <div class="panel">
+        <h3>Party-wise Spend</h3>
+        <div id="spendBars"><div class="muted" style="font-size:12px">Loading…</div></div>
+      </div>
+      <div class="panel">
+        <h3>🎯 Narrative Battlefield <span style="font-size:9px;color:var(--accent)">AI</span></h3>
+        <div id="battlefield"><div class="muted" style="font-size:12px">Loading…</div></div>
+      </div>
+      <div class="panel">
+        <h3>Top Narrative Themes</h3>
+        <div id="themeList"><div class="muted" style="font-size:12px">Loading…</div></div>
+      </div>
+      <div class="panel">
+        <h3>Intel Alerts</h3>
+        <div id="alertList"><div class="muted" style="font-size:12px">Scanning…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== STATE =====================
+    const REFRESH_HOURS = {{ refresh_hours }};
+    let STATE = { data:null, party:"ALL", region:"ALL", source:"ALL", stance:"ALL" };
+
+    const PARTY_COLORS = { BJP:"#ff7a18", INC:"#19a7e0", SAD:"#1fc16b",
+      AAP:"#3b6cff", OTHER:"#9aa6b2" };
+    const PARTY_LABEL = { BJP:"BJP", INC:"Congress", SAD:"SAD", AAP:"AAP",
+      OTHER:"Other" };
+
+    // ===================== LIVE CLOCK =====================
+    function tick(){
+      const now = new Date();
+      document.getElementById("clockTime").textContent =
+        now.toLocaleTimeString("en-IN",{hour12:false});
+      document.getElementById("clockDate").textContent =
+        now.toLocaleDateString("en-IN",{weekday:"short",day:"numeric",
+          month:"short",year:"numeric"});
+    }
+    setInterval(tick,1000); tick();
+
+    // ===================== FETCH =====================
+    async function loadAds(showSpinner){
+      if(showSpinner){
+        document.getElementById("adGrid").innerHTML =
+          '<div class="spinner"><div class="ring"></div>'+
+          '<div class="muted">Fetching latest opponent ads...</div></div>';
+      }
+      try{
+        const res = await fetch("/api/ads",{headers:{"Accept":"application/json"}});
+        if(res.status===401 || res.redirected){ window.location="/login"; return; }
+        const data = await res.json();
+        STATE.data = data;
+        applyMode(data);
+        buildRegionChips(data);
+        renderStats(data);
+        renderSidebar(data);
+        render();
+      }catch(e){
+        document.getElementById("adGrid").innerHTML =
+          '<div class="empty">⚠️ Data load nahi hua. '+
+          'Refresh try karo.<br><span class="muted">'+e+'</span></div>';
+      }
+    }
+
+    // ===================== MODE BANNER =====================
+    function applyMode(data){
+      const banner = document.getElementById("demoBanner");
+      const ind = document.getElementById("liveInd");
+      const txt = document.getElementById("liveText");
+      if(data.mode === "demo"){
+        banner.classList.add("show");
+        document.getElementById("demoReason").textContent =
+          data.demo_reason ? "("+data.demo_reason+")" : "";
+        ind.classList.add("demo-pill");
+        txt.textContent = "Demo Mode";
+      }else{
+        banner.classList.remove("show");
+        ind.classList.remove("demo-pill");
+        txt.textContent = "Live Monitoring";
+      }
+    }
+
+    // ===================== STAT STRIP =====================
+    function renderStats(data){
+      document.getElementById("sTotal").textContent = data.count ?? 0;
+      document.getElementById("sTopSpender").textContent =
+        PARTY_LABEL[data.top_spender] || data.top_spender || "—";
+      const totalSpend = (data.party_spend||[]).reduce((s,p)=>s+p.spend,0);
+      document.getElementById("sSpend").textContent =
+        "₹"+Number(totalSpend).toLocaleString("en-IN");
+      document.getElementById("sParties").textContent =
+        (data.party_spend||[]).length || 0;
+      const u = data.updated_at ? new Date(data.updated_at) : null;
+      document.getElementById("sUpdated").textContent =
+        u ? u.toLocaleTimeString("en-IN",{hour12:false}) : "—";
+
+      // Source filter counts
+      const off = data.official_count ?? (data.ads||[]).filter(a=>a.is_official).length;
+      const non = data.non_official_count ?? (data.ads||[]).filter(a=>!a.is_official).length;
+      document.getElementById("cAll").textContent = "("+(data.count??0)+")";
+      document.getElementById("cOff").textContent = "("+off+")";
+      document.getElementById("cNon").textContent = "("+non+")";
+
+      // Stance counts (AI)
+      const sc = data.stance_counts || {};
+      document.getElementById("cAg").textContent = "("+(sc.against||0)+")";
+      document.getElementById("cSu").textContent = "("+(sc.support||0)+")";
+      document.getElementById("cNe").textContent = "("+(sc.neutral||0)+")";
+      // AI off note
+      document.getElementById("aiOff").style.display = data.ai_enabled ? "none" : "inline";
+    }
+
+    // ===================== REGION CHIPS =====================
+    function buildRegionChips(data){
+      const set = new Set();
+      (data.ads||[]).forEach(a=>(a.regions||[]).forEach(r=>set.add(r)));
+      const box = document.getElementById("regionChips");
+      let html = '<div class="chip '+(STATE.region==="ALL"?"active":"")+
+        '" data-region="ALL" onclick="setRegion(this)">All Regions</div>';
+      [...set].sort().forEach(r=>{
+        html += '<div class="chip '+(STATE.region===r?"active":"")+
+          '" data-region="'+r+'" onclick="setRegion(this)">'+r+'</div>';
+      });
+      box.innerHTML = html;
+    }
+
+    // ===================== SIDEBAR =====================
+    function renderSidebar(data){
+      // Party spend bars
+      const bars = data.party_spend||[];
+      const max = Math.max(1,...bars.map(b=>b.spend));
+      document.getElementById("spendBars").innerHTML = bars.length ? bars.map(b=>{
+        const c = PARTY_COLORS[b.party]||PARTY_COLORS.OTHER;
+        const pct = Math.round(b.spend/max*100);
+        return '<div class="bar"><div class="row"><span>'+
+          (PARTY_LABEL[b.party]||b.party)+'</span><b>₹'+
+          Number(b.spend).toLocaleString("en-IN")+'</b></div>'+
+          '<div class="track"><div class="fill" style="width:'+pct+
+          '%;background:'+c+'"></div></div></div>';
+      }).join("") : '<div class="muted" style="font-size:12px">No spend data</div>';
+
+      // Top themes
+      const themes = data.top_themes||[];
+      document.getElementById("themeList").innerHTML = themes.length ? themes.map(t=>
+        '<div class="themeitem"><span class="themedot"></span>'+
+        '<span>'+t.theme+'</span><span class="n">'+t.count+'</span></div>'
+      ).join("") : '<div class="muted" style="font-size:12px">No themes</div>';
+
+      // Narrative battlefield (AI)
+      renderBattlefield(data);
+      // Intel alerts (derived client-side)
+      renderAlerts(data);
+    }
+
+    function renderBattlefield(data){
+      const bf = data.battlefield||[];
+      const box = document.getElementById("battlefield");
+      if(!data.ai_enabled){
+        box.innerHTML = '<div class="muted" style="font-size:12px">AI classification off.<br>'+
+          'Set <b>ANTHROPIC_API_KEY</b> to see which narratives attack vs support AAP.</div>';
+        return;
+      }
+      if(!bf.length){ box.innerHTML='<div class="muted" style="font-size:12px">No data</div>'; return; }
+      box.innerHTML = bf.slice(0,7).map(n=>{
+        const tot = n.count||1;
+        const ag = Math.round((n.against||0)/tot*100);
+        const su = Math.round((n.support||0)/tot*100);
+        const ne = 100-ag-su;
+        const sum = (n.summaries||[])[0] || "";
+        return '<div class="bf">'+
+          '<div class="h"><span>'+esc(n.narrative)+'</span><span class="c">'+n.count+'</span></div>'+
+          '<div class="split"><div class="ag" style="width:'+ag+'%"></div>'+
+            '<div class="su" style="width:'+su+'%"></div>'+
+            '<div class="ne" style="width:'+ne+'%"></div></div>'+
+          '<div class="leg">⚔️ '+(n.against||0)+' against · 🤝 '+(n.support||0)+
+            ' pro · 😐 '+(n.neutral||0)+' neutral</div>'+
+          (sum?'<div class="sum">“'+esc(sum)+'”</div>':'')+
+        '</div>';
+      }).join("");
+    }
+
+    function renderAlerts(data){
+      const alerts = [];
+      const bars = data.party_spend||[];
+      if(bars.length){
+        const top = bars[0];
+        alerts.push({ic:"🔥",cls:"",txt:"<b>"+(PARTY_LABEL[top.party]||top.party)+
+          "</b> is the top spender at ₹"+Number(top.spend).toLocaleString("en-IN"),
+          t:"Spend dominance"});
+      }
+      const themes = data.top_themes||[];
+      if(themes.length){
+        alerts.push({ic:"🎯",cls:"warn",txt:"Most pushed narrative: <b>"+
+          themes[0].theme+"</b> ("+themes[0].count+" ads)",t:"Narrative watch"});
+      }
+      // High-spend single ads
+      const hot = (data.ads||[]).filter(a=>a.spend_mid>=30000)
+        .sort((a,b)=>b.spend_mid-a.spend_mid).slice(0,1);
+      hot.forEach(a=>alerts.push({ic:"⚡",cls:"",
+        txt:"High-spend ad by <b>"+a.page+"</b> — "+a.spend,t:"Big push detected"}));
+      if(data.mode==="demo"){
+        alerts.push({ic:"🧪",cls:"warn",txt:"Running on demo data. Set token for live intel.",
+          t:"System"});
+      }
+      document.getElementById("alertList").innerHTML = alerts.length ? alerts.map(a=>
+        '<div class="alert '+a.cls+'"><div class="ic">'+a.ic+'</div><div>'+
+        a.txt+'<div class="at">'+a.t+'</div></div></div>'
+      ).join("") : '<div class="muted" style="font-size:12px">No alerts</div>';
+    }
+
+    // ===================== FILTERS =====================
+    function setParty(el){
+      document.querySelectorAll('[data-party]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active");
+      STATE.party = el.dataset.party; render();
+    }
+    function setRegion(el){
+      document.querySelectorAll('[data-region]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active");
+      STATE.region = el.dataset.region; render();
+    }
+    function setSource(el){
+      document.querySelectorAll('[data-source]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active");
+      STATE.source = el.dataset.source; render();
+    }
+    function setStance(el){
+      document.querySelectorAll('[data-stance]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active");
+      STATE.stance = el.dataset.stance; render();
+    }
+
+    // ===================== RENDER CARDS =====================
+    function render(){
+      if(!STATE.data) return;
+      const q = (document.getElementById("searchBox").value||"").toLowerCase();
+      let ads = STATE.data.ads||[];
+
+      if(STATE.source!=="ALL") ads = ads.filter(a=>a.source===STATE.source);
+      if(STATE.stance!=="ALL") ads = ads.filter(a=>a.stance===STATE.stance);
+      if(STATE.party!=="ALL") ads = ads.filter(a=>a.party===STATE.party);
+      if(STATE.region!=="ALL") ads = ads.filter(a=>(a.regions||[]).includes(STATE.region));
+      if(q) ads = ads.filter(a=>
+        (a.text||"").toLowerCase().includes(q) ||
+        (a.page||"").toLowerCase().includes(q) ||
+        (a.theme||"").toLowerCase().includes(q));
+
+      const grid = document.getElementById("adGrid");
+      if(!ads.length){
+        grid.innerHTML = '<div class="empty">😶 In filters ke liye koi ad nahi mila.</div>';
+        return;
+      }
+      grid.innerHTML = ads.map(adCard).join("");
+    }
+
+    function adCard(a){
+      const c = PARTY_COLORS[a.party]||PARTY_COLORS.OTHER;
+      const initials = (a.page||"?").trim().slice(0,2).toUpperCase();
+      const plats = (a.plat||[]).map(p=>'<span class="mini">'+p+'</span>').join("");
+      const regs = (a.regions||[]).map(r=>'<span class="mini">📍'+r+'</span>').join("");
+      const view = a.snapshot_url
+        ? '<a class="viewbtn" href="'+a.snapshot_url+'" target="_blank" rel="noopener">View on Meta ↗</a>'
+        : '<div class="viewbtn muted" style="color:var(--muted)">No snapshot</div>';
+      const srcBadge = a.is_official
+        ? '<span class="srcbadge off">✅ Official</span>'
+        : '<span class="srcbadge non">📰 Non-Official</span>';
+      const ST = {against:["against","⚔️ Against AAP"],support:["support","🤝 Pro-AAP"],
+        neutral:["neutral","😐 Neutral"]};
+      const st = ST[a.stance];
+      const stBadge = st ? '<span class="stbadge '+st[0]+'">'+st[1]+'</span>' : '';
+      const summary = a.narrative_summary
+        ? '<div class="summary">🧠 '+esc(a.narrative_summary)+'</div>' : '';
+      return '<div class="card">'+
+        '<div class="top">'+
+          '<div class="pavatar" style="background:'+c+'">'+initials+'</div>'+
+          '<div><div class="pname">'+esc(a.page)+'</div>'+
+          '<div class="phandle">'+esc(a.handle)+'</div></div>'+
+          '<div class="ptag" style="background:'+c+'33;color:'+c+'">'+
+            (PARTY_LABEL[a.party]||a.party)+'</div>'+
+        '</div>'+
+        '<div class="pills">'+srcBadge+stBadge+'</div>'+
+        '<div class="theme">🧩 '+esc(a.narrative||a.theme)+'</div>'+
+        summary+
+        '<div class="body">'+esc(a.text)+'</div>'+
+        '<div class="meta">'+
+          '<div><div class="lbl">Spend (range)</div><div class="val">'+esc(a.spend)+'</div></div>'+
+          '<div><div class="lbl">Impressions</div><div class="val">'+esc(a.impr)+'</div></div>'+
+          '<div><div class="lbl">Started</div><div class="val">'+esc(a.start||"—")+'</div></div>'+
+          '<div><div class="lbl">Platforms</div><div class="pills">'+(plats||'<span class="mini">—</span>')+'</div></div>'+
+        '</div>'+
+        (regs?'<div class="pills">'+regs+'</div>':'')+
+        view+
+      '</div>';
+    }
+
+    function esc(s){
+      return String(s??"").replace(/[&<>"']/g,m=>(
+        {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+    }
+
+    // ===================== MANUAL REFRESH =====================
+    document.getElementById("refreshBtn").addEventListener("click",async()=>{
+      const btn = document.getElementById("refreshBtn");
+      btn.textContent = "↻ Refreshing…"; btn.disabled = true;
+      try{
+        await fetch("/api/refresh",{method:"POST"});
+        await loadAds(true);
+      }catch(e){}
+      btn.textContent = "↻ Refresh"; btn.disabled = false;
+    });
+
+    // ===================== BOOT + 6HR AUTO-REFRESH =====================
+    loadAds(true);
+    setInterval(()=>loadAds(false), REFRESH_HOURS*60*60*1000);
+  </script>
+</body>
+</html>

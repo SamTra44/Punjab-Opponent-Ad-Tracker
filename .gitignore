@@ -1,0 +1,27 @@
+# Secrets — kabhi commit mat karo
+.env
+.env.local
+
+# Test/IDE artifacts
+cookies.txt
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
