@@ -1,0 +1,9 @@
+# mise.toml
+# -----------------------------------------------------------------------------
+# Railway ka builder (Railpack) Python install karne ke liye `mise` use karta hai.
+# Kuch python-build-standalone releases pe GitHub artifact attestations nahi hote,
+# jisse "mise install python" fail ho jata hai. Yeh setting us verification ko
+# off kar deti hai (safe — build server pe official Python hi aata hai).
+# -----------------------------------------------------------------------------
+[settings]
+python.github_attestations = false
