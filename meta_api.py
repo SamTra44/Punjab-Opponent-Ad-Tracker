@@ -219,10 +219,11 @@ def normalize_ad(raw):
     else:
         is_punjab = any(_is_punjab_region(r) for r in ranked_regions)
     if config.PUNJAB_ONLY:
-        # Display se doosre states ka noise hatao — sirf Punjab regions.
-        display_regions = [r for r in ranked_regions if _is_punjab_region(r)][:3]
+        # Sirf Punjab regions (jab explicitly PUNJAB_ONLY on ho).
+        out_regions = [r for r in ranked_regions if _is_punjab_region(r)]
     else:
-        display_regions = ranked_regions[:3]
+        # Saare delivery states rakho — taaki har state ka filter chale.
+        out_regions = ranked_regions
 
     return {
         "id": raw.get("id", ""),
@@ -236,7 +237,7 @@ def normalize_ad(raw):
         "spend": _fmt_range(spend_obj, cur_prefix),
         "spend_mid": _spend_midpoint(spend_obj),
         "impr": _fmt_range(impr_obj),
-        "regions": display_regions,
+        "regions": out_regions,
         "is_punjab": is_punjab,
         "plat": raw.get("publisher_platforms", []) or [],
         "start": raw.get("ad_delivery_start_time", ""),

@@ -167,13 +167,13 @@ THEME_KEYWORDS = [
 ]
 DEFAULT_THEME = "General / Other"
 
-# --- Punjab focus -----------------------------------------------------------
+# --- Punjab focus (optional) ------------------------------------------------
 # Meta har political ad ko Punjab ke saath aaspaas ke states (Haryana, Delhi,
-# HP...) mein bhi deliver karta hai. PUNJAB_ONLY=True hone par:
-#   (a) ssirf woh ads rakhe jaate hain jo Punjab mein deliver ho rahi hain
-#   (b) region display/chips se doosre states ka noise hata diya jaata hai
-# Agar poore India ki delivery dekhni ho to env mein PUNJAB_ONLY=0 kar do.
-PUNJAB_ONLY = os.environ.get("PUNJAB_ONLY", "1") not in ("0", "false", "False")
+# HP...) mein bhi deliver karta hai. By default hum koi ad DROP nahi karte —
+# saare states region filter mein dikhte hain, aur user kisi bhi state pe click
+# karke us state ki ads dekh sakta hai (Punjab default focus).
+# Agar kabhi sirf Punjab-delivered ads chahiye to env mein PUNJAB_ONLY=1 kar do.
+PUNJAB_ONLY = os.environ.get("PUNJAB_ONLY", "0") not in ("0", "false", "False")
 
 # Punjab ko pehchanne ke liye: "Punjab" (Meta state-level) + major districts/
 # cities (demo data aur kabhi-kabhi city-level region ke liye). Sab lowercase.

@@ -397,14 +397,17 @@
 
     // ===================== REGION CHIPS =====================
     function buildRegionChips(data){
-      const set = new Set();
-      (data.ads||[]).forEach(a=>(a.regions||[]).forEach(r=>set.add(r)));
+      // Har state ke ad-count nikaalo, frequency ke hisaab se sort (Punjab upar).
+      const cnt = {};
+      (data.ads||[]).forEach(a=>(a.regions||[]).forEach(r=>{cnt[r]=(cnt[r]||0)+1;}));
+      const sorted = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
       const box = document.getElementById("regionChips");
       let html = '<div class="chip '+(STATE.region==="ALL"?"active":"")+
         '" data-region="ALL" onclick="setRegion(this)">All Regions</div>';
-      [...set].sort().forEach(r=>{
+      sorted.forEach(r=>{
         html += '<div class="chip '+(STATE.region===r?"active":"")+
-          '" data-region="'+r+'" onclick="setRegion(this)">'+r+'</div>';
+          '" data-region="'+r+'" onclick="setRegion(this)">'+r+
+          ' <span class="cnt">('+cnt[r]+')</span></div>';
       });
       box.innerHTML = html;
     }
@@ -542,7 +545,8 @@
       const c = PARTY_COLORS[a.party]||PARTY_COLORS.OTHER;
       const initials = (a.page||"?").trim().slice(0,2).toUpperCase();
       const plats = (a.plat||[]).map(p=>'<span class="mini">'+p+'</span>').join("");
-      const regs = (a.regions||[]).map(r=>'<span class="mini">📍'+r+'</span>').join("");
+      const regs = (a.regions||[]).slice(0,5).map(r=>'<span class="mini">📍'+r+'</span>').join("")
+        + ((a.regions||[]).length>5 ? '<span class="mini">+'+((a.regions.length)-5)+'</span>' : '');
       const view = a.snapshot_url
         ? '<a class="viewbtn" href="'+a.snapshot_url+'" target="_blank" rel="noopener">View on Meta ↗</a>'
         : '<div class="viewbtn muted" style="color:var(--muted)">No snapshot</div>';
