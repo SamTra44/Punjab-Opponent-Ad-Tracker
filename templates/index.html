@@ -98,6 +98,7 @@
     .search{flex:1;min-width:180px;padding:9px 13px;background:#0a0f15;
       border:1px solid var(--line);border-radius:8px;color:var(--txt);outline:none}
     .search:focus{border-color:var(--accent)}
+    select.search option{background:#0d1218;color:var(--txt)}
     .cnt{font-size:10px;opacity:.7;font-weight:700}
     .srcbadge{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:5px;
       letter-spacing:.5px;text-transform:uppercase}
@@ -264,9 +265,11 @@
         </div>
         <div class="frow">
           <span class="flabel">Region</span>
-          <div id="regionChips" style="display:flex;gap:8px;flex-wrap:wrap">
-            <div class="chip active" data-region="ALL" onclick="setRegion(this)">All Regions</div>
-          </div>
+          <select class="search" id="regionSelect" style="max-width:260px;cursor:pointer"
+                  onchange="setRegionSel(this.value)">
+            <option value="PUNJAB">🟢 Punjab (default)</option>
+          </select>
+          <span class="muted" style="font-size:11px">← baaki states dropdown mein</span>
         </div>
         <div class="frow">
           <span class="flabel">Search</span>
@@ -305,7 +308,7 @@
   <script>
     // ===================== STATE =====================
     const REFRESH_HOURS = {{ refresh_hours }};
-    let STATE = { data:null, party:"ALL", region:"ALL", source:"ALL", stance:"ALL" };
+    let STATE = { data:null, party:"ALL", region:"PUNJAB", source:"ALL", stance:"ALL" };
 
     const PARTY_COLORS = { BJP:"#ff7a18", INC:"#19a7e0", SAD:"#1fc16b",
       AAP:"#3b6cff", OTHER:"#9aa6b2" };
@@ -397,19 +400,23 @@
 
     // ===================== REGION CHIPS =====================
     function buildRegionChips(data){
-      // Har state ke ad-count nikaalo, frequency ke hisaab se sort (Punjab upar).
+      // Punjab DEFAULT upar; baaki saare states dropdown ke andar (count ke saath).
       const cnt = {};
       (data.ads||[]).forEach(a=>(a.regions||[]).forEach(r=>{cnt[r]=(cnt[r]||0)+1;}));
-      const sorted = Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
-      const box = document.getElementById("regionChips");
-      let html = '<div class="chip '+(STATE.region==="ALL"?"active":"")+
-        '" data-region="ALL" onclick="setRegion(this)">All Regions</div>';
-      sorted.forEach(r=>{
-        html += '<div class="chip '+(STATE.region===r?"active":"")+
-          '" data-region="'+r+'" onclick="setRegion(this)">'+r+
-          ' <span class="cnt">('+cnt[r]+')</span></div>';
+      // Punjab ads = jinme koi region "punjab" rakhta ho.
+      const pbCount = (data.ads||[]).filter(a=>
+        (a.regions||[]).some(r=>/punjab/i.test(r))).length;
+      // Baaki states (Punjab wale alag), count ke hisaab se sorted.
+      const others = Object.keys(cnt).filter(r=>!/punjab/i.test(r))
+        .sort((a,b)=>cnt[b]-cnt[a]);
+      const sel = document.getElementById("regionSelect");
+      let html = '<option value="PUNJAB">🟢 Punjab (default) — '+pbCount+'</option>';
+      html += '<option value="ALL">🌐 All Regions — '+(data.count||0)+'</option>';
+      others.forEach(r=>{
+        html += '<option value="'+r+'">'+r+' — '+cnt[r]+'</option>';
       });
-      box.innerHTML = html;
+      sel.innerHTML = html;
+      sel.value = STATE.region;  // current selection preserve
     }
 
     // ===================== SIDEBAR =====================
@@ -502,10 +509,8 @@
       el.classList.add("active");
       STATE.party = el.dataset.party; render();
     }
-    function setRegion(el){
-      document.querySelectorAll('[data-region]').forEach(c=>c.classList.remove("active"));
-      el.classList.add("active");
-      STATE.region = el.dataset.region; render();
+    function setRegionSel(val){
+      STATE.region = val; render();
     }
     function setSource(el){
       document.querySelectorAll('[data-source]').forEach(c=>c.classList.remove("active"));
@@ -527,7 +532,10 @@
       if(STATE.source!=="ALL") ads = ads.filter(a=>a.source===STATE.source);
       if(STATE.stance!=="ALL") ads = ads.filter(a=>a.stance===STATE.stance);
       if(STATE.party!=="ALL") ads = ads.filter(a=>a.party===STATE.party);
-      if(STATE.region!=="ALL") ads = ads.filter(a=>(a.regions||[]).includes(STATE.region));
+      // Region: PUNJAB (default) = koi bhi region jisme 'punjab' ho; ALL = sab;
+      // warna exact state match.
+      if(STATE.region==="PUNJAB") ads = ads.filter(a=>(a.regions||[]).some(r=>/punjab/i.test(r)));
+      else if(STATE.region!=="ALL") ads = ads.filter(a=>(a.regions||[]).includes(STATE.region));
       if(q) ads = ads.filter(a=>
         (a.text||"").toLowerCase().includes(q) ||
         (a.page||"").toLowerCase().includes(q) ||
