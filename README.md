@@ -1,4 +1,6 @@
-# 🛰️ Punjab Opponent Ad Tracker
+# 🧠 Narrative Intelligence
+
+> *Soch se pehle, jeet ki taiyaari.*
 
 **AAP Punjab Digital War Room** — ek single-screen dashboard jo Meta Ad Library
 se Punjab ke political opponents (BJP / Congress / SAD) ke **active ads**
