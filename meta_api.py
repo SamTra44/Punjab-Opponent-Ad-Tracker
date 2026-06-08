@@ -159,11 +159,10 @@ def _spend_midpoint(obj):
     return (lo + hi) / 2.0
 
 
-def _region_list(delivery_by_region):
-    """delivery_by_region list se top region names nikaalo."""
+def _ranked_regions(delivery_by_region):
+    """delivery_by_region ko percentage ke hisaab se sort karke region names."""
     out = []
     if isinstance(delivery_by_region, list):
-        # Percentage ke hisaab se sort karke top 3 regions.
         try:
             ranked = sorted(
                 delivery_by_region,
@@ -172,11 +171,19 @@ def _region_list(delivery_by_region):
             )
         except Exception:
             ranked = delivery_by_region
-        for r in ranked[:3]:
+        for r in ranked:
             name = r.get("region")
             if name:
                 out.append(name)
     return out
+
+
+def _is_punjab_region(name):
+    """Region Punjab ka hai? ('Punjab'/'Punjab region' ya koi Punjab district)."""
+    low = (name or "").lower().strip()
+    if "punjab" in low:
+        return True
+    return low in config.PUNJAB_DISTRICTS
 
 
 def _handle_from_name(page_name):
@@ -204,6 +211,19 @@ def normalize_ad(raw):
     # Official = ye page hamari known OPPONENT_PAGES list mein hai.
     is_official = str(page_id) in config.PAGE_TO_PARTY
 
+    # Regions: full ranked list nikaalo, Punjab-relevance check karo.
+    ranked_regions = _ranked_regions(raw.get("delivery_by_region"))
+    if not ranked_regions:
+        # Region data hi nahi -> unknown, drop mat karo (benefit of doubt).
+        is_punjab = True
+    else:
+        is_punjab = any(_is_punjab_region(r) for r in ranked_regions)
+    if config.PUNJAB_ONLY:
+        # Display se doosre states ka noise hatao — sirf Punjab regions.
+        display_regions = [r for r in ranked_regions if _is_punjab_region(r)][:3]
+    else:
+        display_regions = ranked_regions[:3]
+
     return {
         "id": raw.get("id", ""),
         "page_id": str(page_id),
@@ -216,7 +236,8 @@ def normalize_ad(raw):
         "spend": _fmt_range(spend_obj, cur_prefix),
         "spend_mid": _spend_midpoint(spend_obj),
         "impr": _fmt_range(impr_obj),
-        "regions": _region_list(raw.get("delivery_by_region")),
+        "regions": display_regions,
+        "is_punjab": is_punjab,
         "plat": raw.get("publisher_platforms", []) or [],
         "start": raw.get("ad_delivery_start_time", ""),
         "stop": raw.get("ad_delivery_stop_time", ""),
@@ -320,6 +341,13 @@ def fetch_all_ads():
         deduped.append(raw)
 
     ads = [normalize_ad(r) for r in deduped]
+
+    # Punjab focus: sirf woh ads jo Punjab mein deliver ho rahi hain.
+    # Official opponent pages ke ads hamesha rakho (woh Punjab parties hain).
+    if config.PUNJAB_ONLY:
+        before = len(ads)
+        ads = [a for a in ads if a.get("is_punjab") or a.get("is_official")]
+        log.info("Punjab filter: kept %d of %d ads.", len(ads), before)
 
     # Spend ke hisaab se sort (bade spenders upar) + total cap.
     ads.sort(key=lambda a: a.get("spend_mid", 0), reverse=True)

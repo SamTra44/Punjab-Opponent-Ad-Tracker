@@ -167,10 +167,25 @@ THEME_KEYWORDS = [
 ]
 DEFAULT_THEME = "General / Other"
 
-# --- Punjab regions (region filter chips ke liye) ---------------------------
-PUNJAB_REGIONS = [
-    "Majha", "Malwa", "Doaba",
-]
+# --- Punjab focus -----------------------------------------------------------
+# Meta har political ad ko Punjab ke saath aaspaas ke states (Haryana, Delhi,
+# HP...) mein bhi deliver karta hai. PUNJAB_ONLY=True hone par:
+#   (a) ssirf woh ads rakhe jaate hain jo Punjab mein deliver ho rahi hain
+#   (b) region display/chips se doosre states ka noise hata diya jaata hai
+# Agar poore India ki delivery dekhni ho to env mein PUNJAB_ONLY=0 kar do.
+PUNJAB_ONLY = os.environ.get("PUNJAB_ONLY", "1") not in ("0", "false", "False")
+
+# Punjab ko pehchanne ke liye: "Punjab" (Meta state-level) + major districts/
+# cities (demo data aur kabhi-kabhi city-level region ke liye). Sab lowercase.
+PUNJAB_DISTRICTS = {
+    "amritsar", "barnala", "bathinda", "faridkot", "fatehgarh sahib",
+    "fazilka", "ferozepur", "firozpur", "gurdaspur", "hoshiarpur",
+    "jalandhar", "kapurthala", "ludhiana", "mansa", "moga", "mohali",
+    "sas nagar", "muktsar", "sri muktsar sahib", "pathankot", "patiala",
+    "rupnagar", "ropar", "sangrur", "shaheed bhagat singh nagar", "nawanshahr",
+    "tarn taran", "malerkotla", "chandigarh",
+}
+
 
 # --- Claude AI classification (stance + narrative) --------------------------
 # Client = AAP. Claude har ad ka text padh ke batata hai ki ad AAP ke against
