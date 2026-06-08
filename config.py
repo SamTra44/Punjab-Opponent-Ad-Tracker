@@ -113,7 +113,8 @@ SEARCH_TERMS = [
 ]
 
 # Pagination + cap (taaki dashboard fast rahe aur API rate limit na ho).
-MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "3"))   # 3*50 = 150/term
+# Pages kam = fast warm-up. 2 pages bhi ~100+ ads laata hai.
+MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "2"))   # 2*50 = 100/term
 MAX_TOTAL_ADS = int(os.environ.get("MAX_TOTAL_ADS", "300"))            # dashboard cap
 
 # Search-term result ko party guess karne ke liye page_name keyword mapping.

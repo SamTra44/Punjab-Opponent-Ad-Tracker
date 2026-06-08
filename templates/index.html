@@ -395,6 +395,7 @@
     setInterval(tick,1000); tick();
 
     // ===================== FETCH =====================
+    let liveIntervalSet = false;
     async function loadAds(showSpinner){
       if(showSpinner){
         document.getElementById("adGrid").innerHTML =
@@ -405,12 +406,30 @@
         const res = await fetch("/api/ads",{headers:{"Accept":"application/json"}});
         if(res.status===401 || res.redirected){ window.location="/login"; return; }
         const data = await res.json();
+
+        // Warm-up: pehli fetch abhi chal rahi hai (deploy/restart ke baad ~1 min).
+        if(data.ready === false){
+          document.getElementById("adGrid").innerHTML =
+            '<div class="spinner"><div class="ring"></div>'+
+            '<div class="muted" style="max-width:360px;text-align:center">'+
+            '🔄 Pehli baar live data aa raha hai… (~1 min)<br>'+
+            '<span style="font-size:11px">Yeh sirf deploy/restart ke baad hota hai. '+
+            'Data khud aa jayega — refresh karne ki zaroorat nahi.</span></div></div>';
+          setTimeout(()=>loadAds(false), 5000);  // auto-poll till ready
+          return;
+        }
+
         STATE.data = data;
         applyMode(data);
         buildRegionChips(data);
         renderStats(data);
         renderSidebar(data);
         render();
+        // Ready hone ke baad hi 6-ghante ka auto-refresh set karo (ek baar).
+        if(!liveIntervalSet){
+          liveIntervalSet = true;
+          setInterval(()=>loadAds(false), REFRESH_HOURS*60*60*1000);
+        }
       }catch(e){
         document.getElementById("adGrid").innerHTML =
           '<div class="empty">⚠️ Data load nahi hua. '+
@@ -769,9 +788,9 @@
       btn.textContent = "↻ Refresh"; btn.disabled = false;
     });
 
-    // ===================== BOOT + 6HR AUTO-REFRESH =====================
+    // ===================== BOOT =====================
+    // loadAds khud ready hone tak poll karta hai, phir 6hr interval set karta hai.
     loadAds(true);
-    setInterval(()=>loadAds(false), REFRESH_HOURS*60*60*1000);
   </script>
 </body>
 </html>

@@ -48,6 +48,9 @@ CACHE = {
     "top_themes": [],
     "errors": [],
     "updated_at": None,
+    # ready=False -> abhi pehli fetch chal rahi hai (warm-up). Frontend isse
+    # dekh ke "loading" dikhata hai aur auto-poll karta hai jab tak ready na ho.
+    "ready": False,
 }
 _CACHE_LOCK = threading.Lock()
 
@@ -71,6 +74,7 @@ def refresh_cache():
         log.warning("AI classification skipped: %s", e)
 
     payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    payload["ready"] = True  # pehli fetch complete -> frontend ko data dikhao
     with _CACHE_LOCK:
         CACHE.update(payload)
     log.info("Cache updated: mode=%s count=%s top_spender=%s",
