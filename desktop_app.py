@@ -26,6 +26,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
 sys.path.insert(0, HERE)
 
+# Desktop app = local (127.0.0.1). Login skip karo (auth web ke liye hai).
+os.environ["NI_DESKTOP"] = "1"
+
 
 def _free_port(preferred=5057):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,9 +87,19 @@ def main():
     # 2) Chrome/Edge ko app-mode mein kholo (sabse reliable desktop-window).
     browser = _find_browser()
     if browser:
-        # Apna alag profile -> fresh instance, jisse window band hone par
-        # process.wait() return ho jaata hai (clean shutdown).
-        profile = os.path.join(tempfile.gettempdir(), "narrative_intel_app")
+        # HAR launch ka APNA ALAG profile (pid-based) -> kabhi lock-conflict
+        # nahi hota, har double-click reliably naya window kholta hai. Closing
+        # par process.wait() return -> clean shutdown.
+        base = tempfile.gettempdir()
+        profile = os.path.join(base, f"narrative_intel_{os.getpid()}")
+        # Purane profile dirs best-effort delete (jo abhi use mein nahi).
+        try:
+            import shutil as _sh
+            for d in os.listdir(base):
+                if d.startswith("narrative_intel_") and d != os.path.basename(profile):
+                    _sh.rmtree(os.path.join(base, d), ignore_errors=True)
+        except Exception:
+            pass
         try:
             proc = subprocess.Popen([
                 browser,
@@ -94,6 +107,7 @@ def main():
                 f"--user-data-dir={profile}",
                 "--no-first-run",
                 "--no-default-browser-check",
+                "--new-window",
                 "--window-size=1440,900",
             ])
             proc.wait()  # app-window band hone tak chalega

@@ -222,6 +222,11 @@ ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "admin123")
 SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 
+# DESKTOP_MODE: desktop app (local 127.0.0.1) mein login skip — kyunki yeh
+# user ke apne PC pe chalta hai, network pe expose nahi hota. desktop_app.py
+# yeh NI_DESKTOP=1 set karta hai. Railway/web pe yeh OFF rehta hai (auth chalu).
+DESKTOP_MODE = os.environ.get("NI_DESKTOP") == "1"
+
 # --- Scheduler --------------------------------------------------------------
 REFRESH_HOURS = int(os.environ.get("REFRESH_HOURS", "6"))
 

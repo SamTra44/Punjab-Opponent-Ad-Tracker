@@ -100,9 +100,10 @@ def refresh_cache():
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not session.get("logged_in"):
-            return redirect(url_for("login", next=request.path))
-        return view(*args, **kwargs)
+        # Desktop app (local) mein login skip; web pe normal auth.
+        if config.DESKTOP_MODE or session.get("logged_in"):
+            return view(*args, **kwargs)
+        return redirect(url_for("login", next=request.path))
     return wrapped
 
 
