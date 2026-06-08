@@ -121,6 +121,14 @@
       border:1px solid var(--line)}
     .summary{font-size:12px;color:#9dc3ff;font-style:italic;
       border-left:2px solid var(--accent2);padding-left:8px;margin:2px 0}
+    .hindi{font-size:13px;color:#ffe0b3;line-height:1.6;background:rgba(255,180,84,.08);
+      border:1px solid rgba(255,180,84,.3);border-radius:8px;padding:9px 11px;margin:2px 0}
+    .hindi .lbl{font-size:10px;color:var(--warn);font-weight:800;text-transform:uppercase;
+      letter-spacing:.5px;display:block;margin-bottom:4px}
+    .trbtn{text-align:center;padding:7px;border-radius:8px;background:var(--panel2);
+      border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--warn);
+      cursor:pointer;margin-top:2px}
+    .trbtn:hover{background:rgba(255,180,84,.15);border-color:var(--warn)}
     /* Narrative battlefield */
     .bf{margin-bottom:13px}
     .bf .h{display:flex;justify-content:space-between;font-size:12.5px;
@@ -309,6 +317,8 @@
     // ===================== STATE =====================
     const REFRESH_HOURS = {{ refresh_hours }};
     let STATE = { data:null, party:"ALL", region:"PUNJAB", source:"ALL", stance:"ALL" };
+    const TRANSLATIONS = {};  // ad_id -> hindi text
+    const TRANSLATING = {};   // ad_id -> bool (loading)
 
     const PARTY_COLORS = { BJP:"#ff7a18", INC:"#19a7e0", SAD:"#1fc16b",
       AAP:"#3b6cff", OTHER:"#9aa6b2" };
@@ -567,6 +577,14 @@
       const stBadge = st ? '<span class="stbadge '+st[0]+'">'+st[1]+'</span>' : '';
       const summary = a.narrative_summary
         ? '<div class="summary">🧠 '+esc(a.narrative_summary)+'</div>' : '';
+      // Hindi translation block + toggle button
+      const tr = TRANSLATIONS[a.id];
+      const trLoading = TRANSLATING[a.id];
+      const hindiBlock = tr
+        ? '<div class="hindi"><span class="lbl">📖 हिंदी अनुवाद</span>'+esc(tr)+'</div>' : '';
+      const trBtn = '<div class="trbtn" onclick="translateAd(\''+a.id+'\')">'+
+        (trLoading ? '⏳ translate ho raha hai…'
+                   : (tr ? '🔼 Hindi chhupao' : '🌐 हिंदी में अनुवाद')) + '</div>';
       return '<div class="card">'+
         '<div class="top">'+
           '<div class="pavatar" style="background:'+c+'">'+initials+'</div>'+
@@ -579,6 +597,8 @@
         '<div class="theme">🧩 '+esc(a.narrative||a.theme)+'</div>'+
         summary+
         '<div class="body">'+esc(a.text)+'</div>'+
+        trBtn+
+        hindiBlock+
         '<div class="meta">'+
           '<div><div class="lbl">Spend (range)</div><div class="val">'+esc(a.spend)+'</div></div>'+
           '<div><div class="lbl">Impressions</div><div class="val">'+esc(a.impr)+'</div></div>'+
@@ -593,6 +613,21 @@
     function esc(s){
       return String(s??"").replace(/[&<>"']/g,m=>(
         {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+    }
+
+    // Ad ko Hindi mein translate karo (toggle). Cached client + server side.
+    function translateAd(id){
+      const ad = (STATE.data && STATE.data.ads || []).find(a=>a.id===id);
+      if(!ad) return;
+      if(TRANSLATIONS[id]){ delete TRANSLATIONS[id]; render(); return; } // toggle off
+      TRANSLATING[id] = true; render();
+      fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({id:id, text:ad.text})})
+        .then(r=>r.json()).then(d=>{
+          TRANSLATING[id]=false;
+          TRANSLATIONS[id] = d.ok ? d.hindi : ("⚠️ "+(d.error||"translate fail"));
+          render();
+        }).catch(e=>{ TRANSLATING[id]=false; TRANSLATIONS[id]="⚠️ error"; render(); });
     }
 
     // ===================== MANUAL REFRESH =====================

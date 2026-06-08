@@ -143,6 +143,21 @@ def api_refresh():
                     "updated_at": data.get("updated_at")})
 
 
+@app.route("/api/translate", methods=["POST"])
+@login_required
+def api_translate():
+    """Ek ad ka text Hindi mein translate karke return karta hai (cached)."""
+    data = request.get_json(silent=True) or {}
+    ad_id = data.get("id", "")
+    text = data.get("text", "")
+    if not text:
+        return jsonify({"ok": False, "error": "no text"}), 400
+    hindi = classifier.translate_to_hindi(ad_id, text)
+    if hindi is None:
+        return jsonify({"ok": False, "error": "AI off ya translate fail"})
+    return jsonify({"ok": True, "hindi": hindi})
+
+
 @app.route("/health")
 def health():
     """Railway/uptime checks ke liye simple health endpoint (no auth)."""

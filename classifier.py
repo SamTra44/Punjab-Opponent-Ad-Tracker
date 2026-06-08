@@ -181,6 +181,41 @@ def enrich_ads(ads):
 
 
 # =============================================================================
+# Translation — ad text ko Hindi mein translate karo (on-demand, cached)
+# =============================================================================
+_TRANSLATE_CACHE = {}  # ad_id -> hindi text
+
+_TRANSLATE_SYSTEM = (
+    "You are a translator. Translate the user's political ad text into natural, "
+    "simple Hindi (Devanagari script). The source is usually Punjabi (Gurmukhi) "
+    "or English. Keep proper nouns/party names readable. Output ONLY the Hindi "
+    "translation — no preface, no notes, no transliteration."
+)
+
+
+def translate_to_hindi(ad_id, text):
+    """Ek ad ka text Hindi mein translate karo. Cached by ad_id. None on failure."""
+    if not AI_ENABLED or not (text or "").strip():
+        return None
+    if ad_id and ad_id in _TRANSLATE_CACHE:
+        return _TRANSLATE_CACHE[ad_id]
+    try:
+        resp = _client.messages.create(
+            model=config.CLASSIFY_MODEL,
+            max_tokens=700,
+            system=_TRANSLATE_SYSTEM,
+            messages=[{"role": "user", "content": text[:1500]}],
+        )
+        out = next((b.text for b in resp.content if b.type == "text"), "").strip()
+    except Exception as e:
+        log.warning("translate failed: %s", e)
+        return None
+    if ad_id and out:
+        _TRANSLATE_CACHE[ad_id] = out
+    return out
+
+
+# =============================================================================
 # Aggregates — frontend ke "Stance Breakdown" + "Narrative Battlefield" ke liye
 # =============================================================================
 def build_ai_aggregates(ads):
