@@ -196,6 +196,9 @@ CLASSIFY_ENABLED = os.environ.get("CLASSIFY_ENABLED", "1") not in ("0", "false",
 CLASSIFY_BATCH_SIZE = int(os.environ.get("CLASSIFY_BATCH_SIZE", "10"))   # ads per API call
 CLASSIFY_MAX_WORKERS = int(os.environ.get("CLASSIFY_MAX_WORKERS", "6"))  # parallel calls
 
+# Strategy brief ke liye smart model (on-demand single call — quality > cost).
+STRATEGY_MODEL = os.environ.get("STRATEGY_MODEL", "claude-opus-4-8")
+
 # Allowed narrative categories (Claude inme se ek choose karega).
 NARRATIVE_CATEGORIES = [
     "Drugs / Law & Order",

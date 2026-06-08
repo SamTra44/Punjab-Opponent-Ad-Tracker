@@ -27,6 +27,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import config
 import meta_api
 import classifier
+import strategy
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -156,6 +157,24 @@ def api_translate():
     if hindi is None:
         return jsonify({"ok": False, "error": "AI off ya translate fail"})
     return jsonify({"ok": True, "hindi": hindi})
+
+
+@app.route("/api/strategy", methods=["GET", "POST"])
+@login_required
+def api_strategy():
+    """
+    GET  -> last cached strategy brief (agar generate ho chuki ho).
+    POST -> current ads se nayi strategy brief generate karo (Claude Opus).
+    """
+    if request.method == "POST":
+        with _CACHE_LOCK:
+            ads = list(CACHE.get("ads", []))
+        result = strategy.generate_brief(ads)
+        if result.get("generated"):
+            result["generated_at"] = datetime.now(timezone.utc).isoformat()
+        return jsonify(result)
+    # GET -> cached
+    return jsonify(strategy.get_cached())
 
 
 @app.route("/health")

@@ -210,6 +210,43 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .empty{grid-column:1/-1;text-align:center;padding:50px;color:var(--muted)}
     .muted{color:var(--muted)}
+
+    /* ===================== STRATEGY MODAL ===================== */
+    .overlay{display:none;position:fixed;inset:0;z-index:100;
+      background:rgba(0,0,0,.72);backdrop-filter:blur(4px);
+      align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+    .overlay.show{display:flex}
+    .modal{width:100%;max-width:860px;background:var(--panel);border:1px solid var(--line);
+      border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;
+      background:var(--panel);border-radius:16px 16px 0 0;z-index:2}
+    .mtitle{font-size:18px;font-weight:800}
+    .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    .mbody{padding:20px 22px}
+    .sec{margin-bottom:22px}
+    .sec h4{font-size:13px;text-transform:uppercase;letter-spacing:.8px;
+      margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .overall{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.3);
+      border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.65;margin-bottom:22px}
+    .item{border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+      margin-bottom:10px;background:var(--panel2)}
+    .item .it{font-weight:700;font-size:13.5px;margin-bottom:5px;display:flex;
+      align-items:center;gap:8px;flex-wrap:wrap}
+    .item .id2{font-size:13px;color:#cdd6e0;line-height:1.55}
+    .item .why{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic}
+    .pill2{font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;
+      text-transform:uppercase;letter-spacing:.5px}
+    .p-high{background:rgba(255,93,108,.18);color:var(--danger);border:1px solid rgba(255,93,108,.4)}
+    .p-medium{background:rgba(255,180,84,.16);color:var(--warn);border:1px solid rgba(255,180,84,.4)}
+    .p-low{background:rgba(154,166,178,.14);color:var(--muted);border:1px solid var(--line)}
+    .v-strong{background:rgba(31,193,107,.18);color:var(--sad);border:1px solid rgba(31,193,107,.4)}
+    .v-weak{background:rgba(255,180,84,.16);color:var(--warn);border:1px solid rgba(255,180,84,.4)}
+    .v-offtarget{background:rgba(255,93,108,.18);color:var(--danger);border:1px solid rgba(255,93,108,.4)}
+    .v-missing{background:rgba(154,166,178,.14);color:var(--muted);border:1px solid var(--line)}
+    .gap{display:flex;gap:9px;padding:9px 12px;border-radius:8px;margin-bottom:8px;
+      background:rgba(255,93,108,.07);border:1px solid rgba(255,93,108,.22);font-size:13px}
+    .recom{border-left:3px solid var(--accent)}
   </style>
 </head>
 <body>
@@ -224,9 +261,30 @@
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
     </div>
+    <button class="topbtn" id="strategyBtn" style="border-color:rgba(0,229,160,.5);color:var(--accent)">🧠 Strategy Brief</button>
     <button class="topbtn" id="refreshBtn">↻ Refresh</button>
     <a class="topbtn ghost" href="/logout">Logout</a>
   </header>
+
+  <!-- ===================== STRATEGY MODAL ===================== -->
+  <div id="stratOverlay" class="overlay" onclick="if(event.target===this)closeStrat()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">🧠 AAP War Room — Strategy Brief</div>
+          <div class="msub">Claude (Opus) analysis · counter-narrative recommendations</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="topbtn" id="stratGen" onclick="genStrat()">⚡ Generate / Refresh</button>
+          <button class="topbtn ghost" onclick="closeStrat()">✕ Close</button>
+        </div>
+      </div>
+      <div class="mbody" id="stratBody">
+        <div class="muted" style="text-align:center;padding:40px">
+          "⚡ Generate" dabao — Claude abhi chal rahi ads ka strategic analysis karega:<br>
+          attack narratives, AAP ke counters sahi/galat, aur recommendations.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== DEMO BANNER ===================== -->
   <div id="demoBanner">
@@ -628,6 +686,76 @@
           TRANSLATIONS[id] = d.ok ? d.hindi : ("⚠️ "+(d.error||"translate fail"));
           render();
         }).catch(e=>{ TRANSLATING[id]=false; TRANSLATIONS[id]="⚠️ error"; render(); });
+    }
+
+    // ===================== STRATEGY BRIEF =====================
+    document.getElementById("strategyBtn").addEventListener("click",()=>{
+      document.getElementById("stratOverlay").classList.add("show");
+      // pehle se generated brief ho to dikhao
+      fetch("/api/strategy").then(r=>r.json()).then(d=>{
+        if(d.generated && d.brief) renderStrat(d.brief);
+      }).catch(()=>{});
+    });
+    function closeStrat(){ document.getElementById("stratOverlay").classList.remove("show"); }
+
+    function genStrat(){
+      const btn=document.getElementById("stratGen");
+      const body=document.getElementById("stratBody");
+      btn.textContent="⏳ Analyzing…"; btn.disabled=true;
+      body.innerHTML='<div class="spinner"><div class="ring"></div>'+
+        '<div class="muted">Claude (Opus) strategy bana raha hai… (~20-30 sec)</div></div>';
+      fetch("/api/strategy",{method:"POST"}).then(r=>r.json()).then(d=>{
+        btn.textContent="⚡ Generate / Refresh"; btn.disabled=false;
+        if(d.generated && d.brief) renderStrat(d.brief);
+        else body.innerHTML='<div class="empty">⚠️ '+esc(d.error||"fail")+'</div>';
+      }).catch(e=>{ btn.textContent="⚡ Generate / Refresh"; btn.disabled=false;
+        body.innerHTML='<div class="empty">⚠️ '+esc(e)+'</div>'; });
+    }
+
+    function renderStrat(b){
+      const st=b._stats||{};
+      let h='<div class="overall">📋 '+esc(b.overall||"")+
+        '<div class="msub" style="margin-top:8px">⚔️ '+(st.against||0)+
+        ' against-AAP ads · 🤝 '+(st.support||0)+' pro-AAP ads analyzed</div></div>';
+
+      // Attacks
+      h+='<div class="sec"><h4>⚔️ Attack Narratives (AAP ke khilaf)</h4>';
+      (b.attack_narratives||[]).forEach(a=>{
+        h+='<div class="item"><div class="it">'+esc(a.narrative)+
+          ' <span class="pill2 p-'+(a.intensity||"low")+'">'+esc(a.intensity)+'</span></div>'+
+          '<div class="id2">'+esc(a.claim)+'</div></div>';
+      });
+      h+='</div>';
+
+      // AAP counters
+      h+='<div class="sec"><h4>🛡️ AAP ke Current Counters (sahi/galat?)</h4>';
+      (b.aap_counters||[]).forEach(c=>{
+        const v=(c.verdict||"missing").replace("-","");
+        h+='<div class="item"><div class="it">'+esc(c.narrative)+
+          ' <span class="pill2 v-'+v+'">'+esc(c.verdict)+'</span></div>'+
+          '<div class="id2">'+esc(c.current_message)+'</div>'+
+          '<div class="why">📝 '+esc(c.note)+'</div></div>';
+      });
+      h+='</div>';
+
+      // Gaps
+      if((b.gaps||[]).length){
+        h+='<div class="sec"><h4>🕳️ Gaps (jinka koi jawaab nahi)</h4>';
+        (b.gaps||[]).forEach(g=>{ h+='<div class="gap">⚠️ '+esc(g)+'</div>'; });
+        h+='</div>';
+      }
+
+      // Recommendations
+      h+='<div class="sec"><h4>🎯 Recommendations (counter-narrative)</h4>';
+      (b.recommendations||[]).forEach(r=>{
+        h+='<div class="item recom"><div class="it">'+esc(r.title)+
+          ' <span class="pill2 p-'+(r.priority||"low")+'">'+esc(r.priority)+' priority</span></div>'+
+          '<div class="id2">💬 '+esc(r.counter_message)+'</div>'+
+          '<div class="why">💡 '+esc(r.rationale)+'</div></div>';
+      });
+      h+='</div>';
+
+      document.getElementById("stratBody").innerHTML=h;
     }
 
     // ===================== MANUAL REFRESH =====================
