@@ -380,6 +380,19 @@
     const TRANSLATIONS = {};  // ad_id -> hindi text
     const TRANSLATING = {};   // ad_id -> bool (loading)
 
+    // Safe JSON fetch — Railway redeploy/proxy "upstream error" jaise non-JSON
+    // responses pe friendly error deta hai (ugly SyntaxError ke bajaye).
+    async function getJSON(url, opts){
+      const r = await fetch(url, opts || {});
+      const t = await r.text();
+      try { return JSON.parse(t); }
+      catch(e){
+        if(!r.ok || /upstream|error|<!doctype|<html/i.test(t))
+          throw new Error("Server abhi restart/busy ho raha hai — 1 min baad try karo");
+        throw new Error("Unexpected server response");
+      }
+    }
+
     const PARTY_COLORS = { BJP:"#ff7a18", INC:"#19a7e0", SAD:"#1fc16b",
       AAP:"#3b6cff", OTHER:"#9aa6b2" };
     const PARTY_LABEL = { BJP:"BJP", INC:"Congress", SAD:"SAD", AAP:"AAP",
@@ -407,7 +420,17 @@
       try{
         const res = await fetch("/api/ads",{headers:{"Accept":"application/json"}});
         if(res.status===401 || res.redirected){ window.location="/login"; return; }
-        const data = await res.json();
+        const _t = await res.text();
+        let data;
+        try { data = JSON.parse(_t); }
+        catch(pe){
+          // Railway redeploy/upstream error — JSON nahi aaya. Auto-retry.
+          document.getElementById("adGrid").innerHTML =
+            '<div class="spinner"><div class="ring"></div>'+
+            '<div class="muted">🔄 Server update ho raha hai… dobara try kar raha hoon</div></div>';
+          setTimeout(()=>loadAds(false), 6000);
+          return;
+        }
 
         // Warm-up: pehli fetch abhi chal rahi hai (deploy/restart ke baad ~1 min).
         if(data.ready === false){
@@ -433,9 +456,11 @@
           setInterval(()=>loadAds(false), REFRESH_HOURS*60*60*1000);
         }
       }catch(e){
+        // Network issue (deploy window etc.) — auto-retry, app stuck na ho.
         document.getElementById("adGrid").innerHTML =
-          '<div class="empty">⚠️ Data load nahi hua. '+
-          'Refresh try karo.<br><span class="muted">'+e+'</span></div>';
+          '<div class="spinner"><div class="ring"></div>'+
+          '<div class="muted">⚠️ Network issue — dobara try kar raha hoon…</div></div>';
+        setTimeout(()=>loadAds(false), 6000);
       }
     }
 
@@ -700,20 +725,21 @@
       if(!ad) return;
       if(TRANSLATIONS[id]){ delete TRANSLATIONS[id]; render(); return; } // toggle off
       TRANSLATING[id] = true; render();
-      fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},
+      getJSON("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({id:id, text:ad.text})})
-        .then(r=>r.json()).then(d=>{
+        .then(d=>{
           TRANSLATING[id]=false;
           TRANSLATIONS[id] = d.ok ? d.hindi : ("⚠️ "+(d.error||"translate fail"));
           render();
-        }).catch(e=>{ TRANSLATING[id]=false; TRANSLATIONS[id]="⚠️ error"; render(); });
+        }).catch(e=>{ TRANSLATING[id]=false;
+          TRANSLATIONS[id]="⚠️ "+(e.message||"error"); render(); });
     }
 
     // ===================== STRATEGY BRIEF =====================
     document.getElementById("strategyBtn").addEventListener("click",()=>{
       document.getElementById("stratOverlay").classList.add("show");
       // pehle se generated brief ho to dikhao
-      fetch("/api/strategy").then(r=>r.json()).then(d=>{
+      getJSON("/api/strategy").then(d=>{
         if(d.generated && d.brief) renderStrat(d.brief);
       }).catch(()=>{});
     });
@@ -725,12 +751,12 @@
       btn.textContent="⏳ Analyzing…"; btn.disabled=true;
       body.innerHTML='<div class="spinner"><div class="ring"></div>'+
         '<div class="muted">Claude (Opus) strategy bana raha hai… (~20-30 sec)</div></div>';
-      fetch("/api/strategy",{method:"POST"}).then(r=>r.json()).then(d=>{
+      getJSON("/api/strategy",{method:"POST"}).then(d=>{
         btn.textContent="⚡ Generate / Refresh"; btn.disabled=false;
         if(d.generated && d.brief) renderStrat(d.brief);
         else body.innerHTML='<div class="empty">⚠️ '+esc(d.error||"fail")+'</div>';
       }).catch(e=>{ btn.textContent="⚡ Generate / Refresh"; btn.disabled=false;
-        body.innerHTML='<div class="empty">⚠️ '+esc(e)+'</div>'; });
+        body.innerHTML='<div class="empty">⚠️ '+esc(e.message||e)+'</div>'; });
     }
 
     function renderStrat(b){
