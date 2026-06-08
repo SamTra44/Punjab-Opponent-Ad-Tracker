@@ -36,6 +36,18 @@ log = logging.getLogger("app")
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
+
+@app.after_request
+def _no_cache_html(resp):
+    """HTML pages ko cache mat karo — browser hamesha latest dashboard le.
+    (Isse 'purana cached version atak gaya' wali dikkat khatam hoti hai.)"""
+    ctype = resp.headers.get("Content-Type", "")
+    if ctype.startswith("text/html"):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+    return resp
+
 # =============================================================================
 # In-memory cache — scheduler isse har 6 ghante refresh karta hai.
 # =============================================================================
