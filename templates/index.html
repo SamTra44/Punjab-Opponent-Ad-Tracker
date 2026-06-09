@@ -815,20 +815,26 @@
         {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
     }
 
+    // Main grid + (agar khula ho to) Damage Radar — dono re-render.
+    function _reRenderTr(){
+      render();
+      const dmg=document.getElementById("dmgOverlay");
+      if(dmg && dmg.classList.contains("show")) renderDamage();
+    }
     // Ad ko Hindi mein translate karo (toggle). Cached client + server side.
     function translateAd(id){
       const ad = (STATE.data && STATE.data.ads || []).find(a=>a.id===id);
       if(!ad) return;
-      if(TRANSLATIONS[id]){ delete TRANSLATIONS[id]; render(); return; } // toggle off
-      TRANSLATING[id] = true; render();
+      if(TRANSLATIONS[id]){ delete TRANSLATIONS[id]; _reRenderTr(); return; } // toggle off
+      TRANSLATING[id] = true; _reRenderTr();
       getJSON("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({id:id, text:ad.text})})
         .then(d=>{
           TRANSLATING[id]=false;
           TRANSLATIONS[id] = d.ok ? d.hindi : ("⚠️ "+(d.error||"translate fail"));
-          render();
+          _reRenderTr();
         }).catch(e=>{ TRANSLATING[id]=false;
-          TRANSLATIONS[id]="⚠️ "+(e.message||"error"); render(); });
+          TRANSLATIONS[id]="⚠️ "+(e.message||"error"); _reRenderTr(); });
     }
 
     // ===================== STRATEGY BRIEF =====================
@@ -1015,6 +1021,12 @@
       const counterBlock=c?'<div class="counter"><span class="lbl">🛡️ AAP Counter</span>'+esc(c)+'</div>':'';
       const cbtn='<span class="cbtn" onclick="genCounter(\''+a.id+'\')">'+
         (loading?'⏳ counter ban raha…':(c?'🔄 Naya counter':'🛡️ Counter chahiye'))+'</span>';
+      // Hindi translate (reuse global translateAd)
+      const tr=TRANSLATIONS[a.id]; const trL=TRANSLATING[a.id];
+      const trBtn='<span class="cbtn" style="background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.35);color:var(--warn)" '+
+        'onclick="translateAd(\''+a.id+'\')">'+
+        (trL?'⏳ translate…':(tr?'🔼 Hindi chhupao':'🌐 हिंदी अनुवाद'))+'</span>';
+      const hindiBlock=tr?'<div class="hindi"><span class="lbl">📖 हिंदी अनुवाद</span>'+esc(tr)+'</div>':'';
       return '<div class="threat '+lvl+'">'+
         '<div class="trow"><span class="dmgbadge '+lvl+'">'+lbl+'</span>'+
           '<span class="tpage">'+esc(a.page)+'</span>'+
@@ -1026,7 +1038,8 @@
           '<div><span class="lbl">📍 Region</span><b>'+esc((a.regions||[]).slice(0,2).join(", ")||"—")+'</b></div>'+
         '</div>'+
         '<div class="ttext">“'+esc(a.text)+'”</div>'+
-        cbtn+counterBlock+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+trBtn+cbtn+'</div>'+
+        hindiBlock+counterBlock+
       '</div>';
     }
 
