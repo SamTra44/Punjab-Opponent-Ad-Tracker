@@ -216,6 +216,52 @@ def translate_to_hindi(ad_id, text):
 
 
 # =============================================================================
+# Per-ad COUNTER — Damage Radar ke liye, ek anti-AAP ad ka specific jawaab
+# =============================================================================
+_COUNTER_CACHE = {}  # ad_id -> counter text
+
+_COUNTER_SYSTEM = (
+    "You are the chief strategist for Aam Aadmi Party (AAP) Punjab. AAP governs "
+    "Punjab (CM Bhagwant Mann). You are given ONE opponent ad that attacks AAP, "
+    "with its narrative and target audience. Write a sharp, specific COUNTER for "
+    "AAP to run targeting the SAME audience.\n"
+    "Output 2 short lines:\n"
+    "1) Counter-message (the actual punchy line AAP should say)\n"
+    "2) Why it works (1 line, mention the audience/angle)\n"
+    "Write ONLY in clean Hindi/Hinglish using DEVANAGARI or Roman script — "
+    "do NOT use Punjabi/Gurmukhi script. Be concrete to Punjab (jobs, drugs, "
+    "schools, development). No preamble, no markdown headers."
+)
+
+
+def generate_counter(ad_id, text, narrative="", audience_str=""):
+    """Ek anti-AAP ad ka counter banao (cached by ad_id). None on failure."""
+    if not AI_ENABLED or not (text or "").strip():
+        return None
+    if ad_id and ad_id in _COUNTER_CACHE:
+        return _COUNTER_CACHE[ad_id]
+    user = (
+        f"OPPONENT AD (attacks AAP):\n{text[:800]}\n\n"
+        f"Narrative: {narrative}\nAudience: {audience_str}\n\n"
+        "AAP ke liye counter do."
+    )
+    try:
+        resp = _client.messages.create(
+            model=config.CLASSIFY_MODEL,
+            max_tokens=400,
+            system=_COUNTER_SYSTEM,
+            messages=[{"role": "user", "content": user}],
+        )
+        out = next((b.text for b in resp.content if b.type == "text"), "").strip()
+    except Exception as e:
+        log.warning("counter gen failed: %s", e)
+        return None
+    if ad_id and out:
+        _COUNTER_CACHE[ad_id] = out
+    return out
+
+
+# =============================================================================
 # Aggregates — frontend ke "Stance Breakdown" + "Narrative Battlefield" ke liye
 # =============================================================================
 def build_ai_aggregates(ads):

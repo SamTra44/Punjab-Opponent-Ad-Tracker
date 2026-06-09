@@ -83,6 +83,8 @@ def refresh_cache():
     try:
         classifier.enrich_ads(payload.get("ads", []))
         payload.update(classifier.build_ai_aggregates(payload.get("ads", [])))
+        # Damage Radar: stance ke baad anti-AAP ads ko threat-rank karo.
+        meta_api.assign_damage_levels(payload.get("ads", []))
     except Exception as e:
         log.warning("AI classification skipped: %s", e)
 
@@ -199,6 +201,23 @@ def api_strategy():
         return jsonify(result)
     # GET -> cached
     return jsonify(strategy.get_cached())
+
+
+@app.route("/api/counter", methods=["POST"])
+@login_required
+def api_counter():
+    """Ek anti-AAP ad ka specific counter generate karo (Damage Radar)."""
+    data = request.get_json(silent=True) or {}
+    ad_id = data.get("id", "")
+    text = data.get("text", "")
+    narrative = data.get("narrative", "")
+    audience = data.get("audience", "")
+    if not text:
+        return jsonify({"ok": False, "error": "no text"}), 400
+    counter = classifier.generate_counter(ad_id, text, narrative, audience)
+    if counter is None:
+        return jsonify({"ok": False, "error": "AI off ya fail"})
+    return jsonify({"ok": True, "counter": counter})
 
 
 @app.route("/api/history")

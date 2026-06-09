@@ -159,6 +159,42 @@ def _spend_midpoint(obj):
     return (lo + hi) / 2.0
 
 
+def _parse_audience(demographic_distribution):
+    """
+    Meta ke demographic_distribution (list of {age, gender, percentage}) se
+    audience summary banao: top gender, top age, aur breakdown.
+    """
+    if not isinstance(demographic_distribution, list) or not demographic_distribution:
+        return None
+    gender = {}
+    age = {}
+    for r in demographic_distribution:
+        try:
+            p = float(r.get("percentage", 0) or 0)
+        except (TypeError, ValueError):
+            p = 0
+        g = (r.get("gender") or "unknown").lower()
+        a = r.get("age") or "?"
+        gender[g] = gender.get(g, 0) + p
+        age[a] = age.get(a, 0) + p
+
+    if not gender and not age:
+        return None
+
+    g_top = max(gender, key=gender.get) if gender else None
+    a_top = max(age, key=age.get) if age else None
+    g_label = {"male": "Mard", "female": "Aurat", "unknown": "Other"}
+    return {
+        "gender_top": g_label.get(g_top, g_top) if g_top else None,
+        "gender_pct": round(gender.get(g_top, 0) * 100) if g_top else 0,
+        "age_top": a_top,
+        "age_pct": round(age.get(a_top, 0) * 100) if a_top else 0,
+        # full gender split for display
+        "male_pct": round(gender.get("male", 0) * 100),
+        "female_pct": round(gender.get("female", 0) * 100),
+    }
+
+
 def _ranked_regions(delivery_by_region):
     """delivery_by_region ko percentage ke hisaab se sort karke region names."""
     out = []
@@ -237,6 +273,11 @@ def normalize_ad(raw):
         "spend": _fmt_range(spend_obj, cur_prefix),
         "spend_mid": _spend_midpoint(spend_obj),
         "impr": _fmt_range(impr_obj),
+        "impr_mid": _spend_midpoint(impr_obj),  # generic range midpoint
+        "audience": _parse_audience(raw.get("demographic_distribution")),
+        # damage_score base (spend + reach). damage_level baad mein AI stance
+        # ke baad assign hota hai (assign_damage_levels).
+        "damage_score": round(_spend_midpoint(spend_obj) + _spend_midpoint(impr_obj)),
         "regions": out_regions,
         "is_punjab": is_punjab,
         "plat": raw.get("publisher_platforms", []) or [],
@@ -478,6 +519,34 @@ _DEMO_RAW = [
         "ad_snapshot_url": "https://www.facebook.com/ads/library/?id=demo_8",
     },
 ]
+
+
+def assign_damage_levels(ads):
+    """
+    AI stance assign hone ke BAAD call karo. Anti-AAP (against) ads ko
+    damage_score (spend+reach) se rank karke high/medium/low label deta hai.
+    Pro/neutral ads threat nahi (damage_level=None).
+    """
+    for a in ads:
+        a["damage_level"] = None
+
+    threats = sorted(
+        [a for a in ads if a.get("stance") == "against"],
+        key=lambda a: a.get("damage_score", 0),
+        reverse=True,
+    )
+    n = len(threats)
+    if n == 0:
+        return
+    hi_cut = max(1, n // 4)        # top 25% = HIGH
+    md_cut = max(hi_cut + 1, n // 2)  # next ~25% = MEDIUM
+    for i, a in enumerate(threats):
+        if i < hi_cut:
+            a["damage_level"] = "high"
+        elif i < md_cut:
+            a["damage_level"] = "medium"
+        else:
+            a["damage_level"] = "low"
 
 
 def _demo_payload(reason="demo", errors=None):
