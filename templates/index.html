@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Narrative Intelligence · AAP Punjab</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
     /* ===================== THEME ===================== */
     :root{
@@ -252,6 +253,29 @@
     #stratOverlay .gap{display:flex;gap:9px;padding:9px 12px;border-radius:8px;margin-bottom:8px;
       background:rgba(255,93,108,.07);border:1px solid rgba(255,93,108,.22);font-size:13px}
     #stratOverlay .recom{border-left:3px solid var(--accent)}
+
+    /* ===================== TRENDS MODAL ===================== */
+    #trendOverlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+      background:rgba(5,8,12,.94);align-items:flex-start;justify-content:center;
+      padding:30px 16px;overflow:auto}
+    #trendOverlay.show{display:flex}
+    #trendOverlay .modal{display:block !important;width:100%;max-width:920px;height:auto !important;
+      background:#0f151d;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    #trendOverlay .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f151d;
+      border-radius:16px 16px 0 0;z-index:2}
+    #trendOverlay .mtitle{font-size:18px;font-weight:800}
+    #trendOverlay .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    #trendOverlay .mbody{display:block;padding:20px 22px}
+    #trendOverlay .chartcard{display:block;background:var(--panel2);border:1px solid var(--line);
+      border-radius:12px;padding:14px 16px;margin-bottom:18px}
+    #trendOverlay .chartcard h4{font-size:13px;text-transform:uppercase;letter-spacing:.6px;
+      color:var(--muted);margin-bottom:12px}
+    #trendOverlay .insight{display:flex;gap:9px;padding:9px 12px;border-radius:8px;margin-bottom:8px;
+      background:rgba(47,129,247,.08);border:1px solid rgba(47,129,247,.28);font-size:13px;color:#cdd6e0}
+    #trendOverlay .insHead{font-size:13px;text-transform:uppercase;letter-spacing:.6px;
+      color:var(--accent2);font-weight:800;margin-bottom:10px}
+    #trendOverlay canvas{max-height:240px}
   </style>
 </head>
 <body>
@@ -266,6 +290,7 @@
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
     </div>
+    <button class="topbtn" id="trendsBtn" style="border-color:rgba(47,129,247,.5);color:var(--accent2)">📈 Trends</button>
     <button class="topbtn" id="strategyBtn" style="border-color:rgba(0,229,160,.5);color:var(--accent)">🧠 Strategy Brief</button>
     <button class="topbtn" id="refreshBtn">↻ Refresh</button>
     <a class="topbtn ghost" href="/logout">Logout</a>
@@ -287,6 +312,20 @@
           "⚡ Generate" dabao — Claude abhi chal rahi ads ka strategic analysis karega:<br>
           attack narratives, AAP ke counters sahi/galat, aur recommendations.
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TRENDS MODAL ===================== -->
+  <div id="trendOverlay" class="overlay" onclick="if(event.target===this)closeTrends()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">📈 Trends Over Time</div>
+          <div class="msub">Spend, stance & narrative — history ke saath</div></div>
+        <button class="topbtn ghost" onclick="closeTrends()">✕ Close</button>
+      </div>
+      <div class="mbody" id="trendBody">
+        <div class="muted" style="text-align:center;padding:40px">Loading trends…</div>
       </div>
     </div>
   </div>
@@ -806,6 +845,78 @@
       h+='</div>';
 
       document.getElementById("stratBody").innerHTML=h;
+    }
+
+    // ===================== TRENDS OVER TIME =====================
+    let _charts = [];
+    function closeTrends(){ document.getElementById("trendOverlay").classList.remove("show"); }
+    document.getElementById("trendsBtn").addEventListener("click",()=>{
+      document.getElementById("trendOverlay").classList.add("show");
+      const body=document.getElementById("trendBody");
+      body.innerHTML='<div class="spinner"><div class="ring"></div>'+
+        '<div class="muted">Trends load ho rahe hain…</div></div>';
+      getJSON("/api/history").then(d=>renderTrends(d)).catch(e=>{
+        body.innerHTML='<div class="empty">⚠️ '+esc(e.message||e)+'</div>'; });
+    });
+
+    function renderTrends(d){
+      const snaps = d.snapshots||[];
+      const body=document.getElementById("trendBody");
+      _charts.forEach(c=>{try{c.destroy();}catch(e){}}); _charts=[];
+      if(snaps.length<1){
+        body.innerHTML='<div class="empty">Abhi koi history nahi hai.<br>'+
+          '<span class="muted">Har refresh pe data save hota hai — kuch refreshes ke baad yahan trends dikhenge.</span></div>';
+        return;
+      }
+      if(typeof Chart==="undefined"){
+        body.innerHTML='<div class="empty">⚠️ Chart library load nahi hui (internet check karo).</div>';
+        return;
+      }
+      const labels = snaps.map(s=>{
+        const dt=new Date(s.t);
+        return dt.toLocaleDateString("en-IN",{day:"numeric",month:"short"})+" "+
+          dt.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false});
+      });
+      let ins='';
+      if((d.insights||[]).length){
+        ins='<div class="chartcard"><div class="insHead">🔎 Auto Insights · '+snaps.length+' snapshots</div>'+
+          d.insights.map(i=>'<div class="insight">'+esc(i)+'</div>').join("")+'</div>';
+      }
+      body.innerHTML = ins+
+        '<div class="chartcard"><h4>💰 Party-wise Spend (₹) over time</h4><canvas id="cSpend"></canvas></div>'+
+        '<div class="chartcard"><h4>⚔️ Stance toward AAP over time</h4><canvas id="cStance"></canvas></div>'+
+        '<div class="chartcard"><h4>🎯 Top Narratives over time (ad count)</h4><canvas id="cNarr"></canvas></div>';
+
+      const opts={responsive:true,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{color:'#8b98a8',boxWidth:12,font:{size:11}}}},
+        scales:{x:{ticks:{color:'#8b98a8',maxRotation:0,autoSkip:true,maxTicksLimit:6,font:{size:10}},grid:{color:'#1e2a38'}},
+                y:{ticks:{color:'#8b98a8',font:{size:10}},grid:{color:'#1e2a38'},beginAtZero:true}}};
+
+      // 1) Party spend ("Other" hata do — woh news/proxy aggregate hai jo
+      //    baaki parties ki line ko dabaa deta hai)
+      const parties={};
+      snaps.forEach(s=>Object.keys(s.party_spend||{}).forEach(p=>{
+        if(!/^other$/i.test(p)) parties[p]=1; }));
+      const spendDs=Object.keys(parties).map(p=>({label:PARTY_LABEL[p]||p,
+        data:snaps.map(s=>(s.party_spend||{})[p]||0),borderColor:PARTY_COLORS[p]||PARTY_COLORS.OTHER,
+        backgroundColor:'transparent',tension:0.3,borderWidth:2,pointRadius:2}));
+      _charts.push(new Chart(document.getElementById("cSpend"),{type:'line',data:{labels,datasets:spendDs},options:opts}));
+
+      // 2) Stance
+      const stC={against:'#ff5d6c',support:'#1fc16b',neutral:'#8b98a8'};
+      const stDs=['against','support','neutral'].map(k=>({
+        label:k==='against'?'⚔️ Against AAP':k==='support'?'🤝 Pro-AAP':'😐 Neutral',
+        data:snaps.map(s=>(s.stance||{})[k]||0),borderColor:stC[k],backgroundColor:'transparent',
+        tension:0.3,borderWidth:2,pointRadius:2}));
+      _charts.push(new Chart(document.getElementById("cStance"),{type:'line',data:{labels,datasets:stDs},options:opts}));
+
+      // 3) Top narratives (latest ke top 5)
+      const latest=snaps[snaps.length-1].narratives||{};
+      const topN=Object.keys(latest).sort((a,b)=>latest[b]-latest[a]).slice(0,5);
+      const pal=['#00e5a0','#2f81f7','#ffb454','#ff5d6c','#b07bff'];
+      const nDs=topN.map((n,i)=>({label:n,data:snaps.map(s=>(s.narratives||{})[n]||0),
+        borderColor:pal[i%pal.length],backgroundColor:'transparent',tension:0.3,borderWidth:2,pointRadius:2}));
+      _charts.push(new Chart(document.getElementById("cNarr"),{type:'line',data:{labels,datasets:nDs},options:opts}));
     }
 
     // ===================== MANUAL REFRESH =====================

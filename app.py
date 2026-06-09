@@ -28,6 +28,7 @@ import config
 import meta_api
 import classifier
 import strategy
+import history
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -89,6 +90,12 @@ def refresh_cache():
     payload["ready"] = True  # pehli fetch complete -> frontend ko data dikhao
     with _CACHE_LOCK:
         CACHE.update(payload)
+
+    # Trend Over Time: is refresh ka snapshot history mein save karo.
+    try:
+        history.record_snapshot(payload)
+    except Exception as e:
+        log.warning("history record skipped: %s", e)
     log.info("Cache updated: mode=%s count=%s top_spender=%s",
              payload.get("mode"), payload.get("count"),
              payload.get("top_spender"))
@@ -192,6 +199,18 @@ def api_strategy():
         return jsonify(result)
     # GET -> cached
     return jsonify(strategy.get_cached())
+
+
+@app.route("/api/history")
+@login_required
+def api_history():
+    """Trend Over Time data — snapshots + auto-insights."""
+    items = history.load_history()
+    return jsonify({
+        "count": len(items),
+        "snapshots": items,
+        "insights": history.compute_insights(items),
+    })
 
 
 @app.route("/health")

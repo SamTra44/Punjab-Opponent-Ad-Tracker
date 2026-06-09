@@ -6,6 +6,9 @@
 cookies.txt
 .claude/
 
+# History snapshots (local/runtime data)
+data/
+
 # Python
 __pycache__/
 *.pyc
