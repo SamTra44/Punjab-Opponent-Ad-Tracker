@@ -29,6 +29,7 @@ import meta_api
 import classifier
 import strategy
 import history
+import intelligence
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -218,6 +219,41 @@ def api_counter():
     if counter is None:
         return jsonify({"ok": False, "error": "AI off ya fail"})
     return jsonify({"ok": True, "counter": counter})
+
+
+@app.route("/api/audience")
+@login_required
+def api_audience():
+    """Audience Vulnerability — opponents kis segment ko target kar rahe."""
+    with _CACHE_LOCK:
+        ads = list(CACHE.get("ads", []))
+    return jsonify(intelligence.audience_vulnerability(ads))
+
+
+@app.route("/api/forecast", methods=["POST"])
+@login_required
+def api_forecast():
+    """Narrative Forecast — Claude predict kare konsa narrative chadega."""
+    with _CACHE_LOCK:
+        ads = list(CACHE.get("ads", []))
+    hist = history.load_history()
+    return jsonify(intelligence.generate_forecast(hist, ads))
+
+
+@app.route("/api/creative", methods=["POST"])
+@login_required
+def api_creative():
+    """Counter-Ad Creative — ek narrative ka ready-to-post ad."""
+    data = request.get_json(silent=True) or {}
+    narrative = data.get("narrative", "")
+    audience = data.get("audience", "")
+    attack = data.get("attack_text", "")
+    if not narrative:
+        return jsonify({"ok": False, "error": "narrative chahiye"}), 400
+    creative = classifier.generate_creative(narrative, audience, attack)
+    if creative is None:
+        return jsonify({"ok": False, "error": "AI off ya fail"})
+    return jsonify({"ok": True, "creative": creative})
 
 
 @app.route("/api/history")

@@ -315,6 +315,56 @@
     #dmgOverlay .counter{margin-top:9px;background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.3);
       border-radius:8px;padding:10px 12px;font-size:13px;color:#bdf5e4;white-space:pre-line;line-height:1.55}
     #dmgOverlay .counter .lbl{font-size:10px;color:var(--accent);font-weight:800;text-transform:uppercase;display:block;margin-bottom:4px}
+
+    /* ===================== INTELLIGENCE MODAL ===================== */
+    #intelOverlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+      background:rgba(5,8,12,.94);align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+    #intelOverlay.show{display:flex}
+    #intelOverlay .modal{display:block !important;width:100%;max-width:880px;height:auto !important;
+      background:#0f151d;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    #intelOverlay .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;
+      border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f151d;border-radius:16px 16px 0 0;z-index:2}
+    #intelOverlay .mtitle{font-size:18px;font-weight:800}
+    #intelOverlay .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    #intelOverlay .mbody{display:block;padding:20px 22px}
+    #intelOverlay .isec{display:block;margin-bottom:26px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+    #intelOverlay .isec:last-child{border-bottom:none;margin-bottom:0}
+    #intelOverlay .isec h4{font-size:14px;font-weight:800;margin-bottom:12px}
+    #intelOverlay .ibtn{padding:8px 14px;border-radius:8px;background:rgba(155,107,255,.14);
+      border:1px solid rgba(155,107,255,.4);font-size:12.5px;font-weight:700;color:#b69bff;cursor:pointer}
+    #intelOverlay .ibtn:hover{background:#9b6bff;color:#fff}
+    /* audience stat grid */
+    #intelOverlay .agrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:10px}
+    #intelOverlay .astat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+    #intelOverlay .astat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+    #intelOverlay .astat .v{font-size:18px;font-weight:800;margin-top:3px}
+    #intelOverlay .ainsight{background:rgba(255,93,108,.07);border:1px solid rgba(255,93,108,.25);
+      border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.6;color:#ffd9dd}
+    /* forecast cards */
+    #intelOverlay .fc{display:block;border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+      margin-bottom:10px;background:var(--panel2);border-left:3px solid var(--accent2)}
+    #intelOverlay .fc.rising{border-left-color:var(--danger)}
+    #intelOverlay .fc.falling{border-left-color:var(--sad)}
+    #intelOverlay .fc .ft{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+    #intelOverlay .fc .fp{font-size:12.5px;color:#cdd6e0;line-height:1.5}
+    #intelOverlay .fc .fa{font-size:12.5px;color:var(--accent);margin-top:5px}
+    #intelOverlay .trendpill{font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;text-transform:uppercase}
+    #intelOverlay .trendpill.rising{background:rgba(255,93,108,.18);color:var(--danger)}
+    #intelOverlay .trendpill.stable{background:rgba(154,166,178,.14);color:var(--muted)}
+    #intelOverlay .trendpill.falling{background:rgba(31,193,107,.18);color:var(--sad)}
+    /* creative poster */
+    #intelOverlay .poster{background:linear-gradient(135deg,#0c1f3a,#13294a);border:1px solid var(--accent2);
+      border-radius:14px;padding:22px;margin-top:8px;position:relative;overflow:hidden}
+    #intelOverlay .poster:before{content:"AAP PUNJAB";position:absolute;top:12px;right:16px;font-size:11px;
+      font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.5)}
+    #intelOverlay .poster .ph{font-size:24px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:12px;max-width:80%}
+    #intelOverlay .poster .pb{font-size:14px;color:#dbe7ff;line-height:1.5;margin-bottom:14px}
+    #intelOverlay .poster .pcta{display:inline-block;background:var(--accent);color:#04130d;font-weight:800;
+      padding:8px 16px;border-radius:8px;font-size:13px}
+    #intelOverlay .crmeta{margin-top:12px;font-size:12.5px;color:#cdd6e0;line-height:1.7}
+    #intelOverlay .crmeta b{color:#fff}
+    #intelOverlay .crmeta .tag{display:inline-block;background:rgba(47,129,247,.15);border:1px solid rgba(47,129,247,.3);
+      color:#9dc3ff;font-size:11px;padding:2px 8px;border-radius:5px;margin:2px 3px 0 0}
   </style>
 </head>
 <body>
@@ -329,6 +379,7 @@
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
     </div>
+    <button class="topbtn" id="intelBtn" style="border-color:rgba(155,107,255,.6);color:#b69bff">🧠 Intelligence</button>
     <button class="topbtn" id="dmgBtn" style="border-color:rgba(255,93,108,.5);color:var(--danger)">🔥 Damage Radar</button>
     <button class="topbtn" id="trendsBtn" style="border-color:rgba(47,129,247,.5);color:var(--accent2)">📈 Trends</button>
     <button class="topbtn" id="strategyBtn" style="border-color:rgba(0,229,160,.5);color:var(--accent)">🧠 Strategy Brief</button>
@@ -366,6 +417,41 @@
       </div>
       <div class="mbody" id="trendBody">
         <div class="muted" style="text-align:center;padding:40px">Loading trends…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== INTELLIGENCE MODAL ===================== -->
+  <div id="intelOverlay" class="overlay" onclick="if(event.target===this)closeIntel()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">🧠 War Intelligence</div>
+          <div class="msub">Claude ka dimaag — audience, forecast, counter-ad creative</div></div>
+        <button class="topbtn ghost" onclick="closeIntel()">✕ Close</button>
+      </div>
+      <div class="mbody">
+        <!-- Audience Vulnerability -->
+        <div class="isec">
+          <h4>👥 Audience Vulnerability</h4>
+          <div id="audBody"><div class="muted" style="font-size:12px">Loading…</div></div>
+        </div>
+        <!-- Narrative Forecast -->
+        <div class="isec">
+          <h4>🔮 Narrative Forecast <span style="font-size:9px;color:var(--accent2)">AI predict</span></h4>
+          <div id="fcBody"><div class="muted" style="font-size:12px">
+            <button class="ibtn" onclick="genForecast()">⚡ Forecast generate karo</button>
+            — Claude trends padh ke batayega konsa narrative chadega aur kab counter karna hai.</div></div>
+        </div>
+        <!-- Counter-Ad Creative -->
+        <div class="isec">
+          <h4>🎨 Counter-Ad Creative <span style="font-size:9px;color:var(--accent)">AI banaye</span></h4>
+          <div class="frow" style="margin-bottom:10px">
+            <select class="search" id="crNarr" style="max-width:300px;cursor:pointer"></select>
+            <button class="ibtn" onclick="genCreative()">🎨 Ad banao</button>
+          </div>
+          <div id="crBody"><div class="muted" style="font-size:12px">
+            Narrative choose karke "Ad banao" dabao — Claude poora ready-to-post ad + poster banayega.</div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1051,6 +1137,84 @@
         body:JSON.stringify({id:id,text:ad.text,narrative:ad.narrative||ad.theme,audience:audienceStr(ad.audience)})})
         .then(d=>{ CGEN[id]=false; COUNTERS[id]=d.ok?d.counter:("⚠️ "+(d.error||"fail")); renderDamage(); })
         .catch(e=>{ CGEN[id]=false; COUNTERS[id]="⚠️ "+(e.message||"error"); renderDamage(); });
+    }
+
+    // ===================== WAR INTELLIGENCE =====================
+    function closeIntel(){ document.getElementById("intelOverlay").classList.remove("show"); }
+    document.getElementById("intelBtn").addEventListener("click",()=>{
+      document.getElementById("intelOverlay").classList.add("show");
+      loadAudience();
+      fillNarrativeDropdown();
+    });
+
+    // -- Audience Vulnerability (instant, computed) --
+    function loadAudience(){
+      const box=document.getElementById("audBody");
+      getJSON("/api/audience").then(d=>{
+        if(!d.available){ box.innerHTML='<div class="muted" style="font-size:12px">Abhi anti-AAP data nahi (AI off ya data load ho raha).</div>'; return; }
+        box.innerHTML=
+          '<div class="agrid">'+
+          '<div class="astat"><div class="k">Threat Ads</div><div class="v">'+d.threat_ads+'</div></div>'+
+          '<div class="astat"><div class="k">👨 Mard</div><div class="v">'+d.male_pct+'%</div></div>'+
+          '<div class="astat"><div class="k">👩 Aurat</div><div class="v">'+d.female_pct+'%</div></div>'+
+          '<div class="astat"><div class="k">Top Umar</div><div class="v">'+esc(d.top_age)+'</div></div>'+
+          '</div>'+
+          '<div class="ainsight">⚠️ '+d.insight+'</div>';
+      }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+
+    // -- Narrative Forecast (Claude) --
+    function genForecast(){
+      const box=document.getElementById("fcBody");
+      box.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Claude trends padh ke forecast bana raha… (~15s)</div></div>';
+      getJSON("/api/forecast",{method:"POST"}).then(d=>{
+        if(!d.available){ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(d.error||"fail")+'</div>'; return; }
+        let h=d.overall?'<div class="ainsight" style="background:rgba(47,129,247,.07);border-color:rgba(47,129,247,.25);color:#cfe3ff;margin-bottom:12px">🔮 '+esc(d.overall)+'</div>':'';
+        (d.forecasts||[]).forEach(f=>{
+          h+='<div class="fc '+esc(f.trend)+'"><div class="ft">'+esc(f.narrative)+
+            ' <span class="trendpill '+esc(f.trend)+'">'+({rising:"📈 chad raha",stable:"➡️ stable",falling:"📉 gir raha"}[f.trend]||f.trend)+'</span>'+
+            ' <span class="pill2 p-'+esc(f.urgency)+'">'+esc(f.urgency)+'</span></div>'+
+            '<div class="fp">'+esc(f.prediction)+'</div>'+
+            '<div class="fa">🎯 '+esc(f.action)+'</div></div>';
+        });
+        box.innerHTML=h;
+      }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+
+    // -- Counter-Ad Creative (Claude -> poster) --
+    function fillNarrativeDropdown(){
+      const sel=document.getElementById("crNarr");
+      const ads=(STATE.data&&STATE.data.ads)||[];
+      const set={};
+      ads.filter(a=>a.stance==="against").forEach(a=>{const n=a.narrative||a.theme||"Other"; set[n]=(set[n]||0)+1;});
+      const opts=Object.keys(set).sort((a,b)=>set[b]-set[a]);
+      sel.innerHTML=opts.length?opts.map(n=>'<option value="'+esc(n)+'">'+esc(n)+' ('+set[n]+')</option>').join(""):
+        '<option value="">Koi anti-AAP narrative nahi</option>';
+    }
+    function genCreative(){
+      const narr=document.getElementById("crNarr").value;
+      const box=document.getElementById("crBody");
+      if(!narr){ box.innerHTML='<div class="muted" style="font-size:12px">Pehle koi narrative choose karo.</div>'; return; }
+      // us narrative ka ek sample attack ad + audience
+      const ads=(STATE.data&&STATE.data.ads)||[];
+      const sample=ads.find(a=>a.stance==="against"&&(a.narrative||a.theme)===narr);
+      const audStr=sample&&sample.audience?(sample.audience.gender_pct+"% "+sample.audience.gender_top+", "+sample.audience.age_top):"Punjab voters";
+      box.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Claude counter-ad creative bana raha… (~15s)</div></div>';
+      getJSON("/api/creative",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({narrative:narr,audience:audStr,attack_text:sample?sample.text:""})})
+        .then(d=>{
+          if(!d.ok){ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(d.error||"fail")+'</div>'; return; }
+          const c=d.creative;
+          const tags=(c.hashtags||[]).map(t=>'<span class="tag">'+esc(t.replace(/^#?/,'#'))+'</span>').join("");
+          box.innerHTML=
+            '<div class="poster"><div class="ph">'+esc(c.headline)+'</div>'+
+            '<div class="pb">'+esc(c.body)+'</div>'+
+            '<span class="pcta">'+esc(c.cta)+' →</span></div>'+
+            '<div class="crmeta">'+
+            '<b>📝 Caption:</b> '+esc(c.caption)+'<br>'+
+            '<b># Hashtags:</b> '+tags+'<br>'+
+            '<b>🎨 Visual:</b> '+esc(c.visual_idea)+'</div>';
+        }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
     }
 
     // ===================== MANUAL REFRESH =====================

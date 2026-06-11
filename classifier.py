@@ -262,6 +262,65 @@ def generate_counter(ad_id, text, narrative="", audience_str=""):
 
 
 # =============================================================================
+# Counter-Ad CREATIVE — poora ready-to-post ad (copy + poster ke liye fields)
+# =============================================================================
+_CREATIVE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "headline": {"type": "string"},
+        "body": {"type": "string"},
+        "caption": {"type": "string"},
+        "cta": {"type": "string"},
+        "hashtags": {"type": "array", "items": {"type": "string"}},
+        "visual_idea": {"type": "string"},
+    },
+    "required": ["headline", "body", "caption", "cta", "hashtags", "visual_idea"],
+    "additionalProperties": False,
+}
+
+_CREATIVE_SYSTEM = (
+    "You are AAP Punjab's ad creative director. AAP governs Punjab (CM Bhagwant "
+    "Mann). Opponents are attacking AAP on a narrative. Create a punchy, "
+    "ready-to-post COUNTER ad for AAP aimed at the given audience.\n"
+    "Fields:\n"
+    "- headline: short bold hook (<=8 words)\n"
+    "- body: 2-3 line persuasive message (AAP ke kaam highlight karo: jobs, "
+    "drugs action, schools, health, development)\n"
+    "- caption: social media caption\n"
+    "- cta: call to action (e.g. 'Aage badho, Punjab')\n"
+    "- hashtags: 4-6 relevant hashtags\n"
+    "- visual_idea: 1 line — poster mein kya dikhe\n"
+    "Clean Hindi/Hinglish (Devanagari ok), Punjab-specific. No markdown."
+)
+
+
+def generate_creative(narrative, audience_str="", attack_text=""):
+    """Ek narrative ke liye counter-ad creative banao. Returns dict or None."""
+    if not AI_ENABLED or not _client:
+        return None
+    user = (
+        f"Narrative jis par opponent attack kar raha: {narrative}\n"
+        f"Target audience: {audience_str or 'Punjab voters'}\n"
+        + (f"Sample attack ad: {attack_text[:400]}\n" if attack_text else "")
+        + "\nAAP ke liye is narrative ka counter ad banao."
+    )
+    try:
+        resp = _client.messages.create(
+            model=config.STRATEGY_MODEL,
+            max_tokens=1200,
+            system=_CREATIVE_SYSTEM,
+            messages=[{"role": "user", "content": user}],
+            output_config={"format": {"type": "json_schema",
+                                      "schema": _CREATIVE_SCHEMA}},
+        )
+        text = next((b.text for b in resp.content if b.type == "text"), "{}")
+        return json.loads(text)
+    except Exception as e:
+        log.warning("creative gen failed: %s", e)
+        return None
+
+
+# =============================================================================
 # Aggregates — frontend ke "Stance Breakdown" + "Narrative Battlefield" ke liye
 # =============================================================================
 def build_ai_aggregates(ads):
