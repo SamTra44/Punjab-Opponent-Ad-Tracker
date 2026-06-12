@@ -287,10 +287,11 @@ def api_export():
     ws.title = "Opponent Ads"
 
     headers = [
-        "Facebook Page", "Handle", "Party", "Source", "Stance", "Damage Level",
-        "Narrative", "AI Summary", "Spend (range)", "Impressions (range)",
-        "Audience", "Regions", "Platforms", "Started", "Theme (keyword)",
-        "Ad Text", "View on Meta (link)", "Ad ID",
+        "Facebook Page", "Facebook Page URL", "Page ID", "Handle", "Party",
+        "Source", "Stance", "Damage Level", "Narrative", "AI Summary",
+        "Spend (range)", "Impressions (range)", "Audience", "Regions",
+        "Platforms", "Started", "Theme (keyword)", "Ad Text",
+        "View Ad on Meta (link)", "Ad ID",
     ]
     ws.append(headers)
 
@@ -300,9 +301,12 @@ def api_export():
         aud = a.get("audience") or {}
         aud_str = (f"{aud.get('gender_pct','')}% {aud.get('gender_top','')}, "
                    f"{aud.get('age_top','')}") if aud else ""
+        pid = str(a.get("page_id", "") or "").strip()
+        page_url = f"https://www.facebook.com/{pid}" if pid else ""
         ws.append([
-            a.get("page", ""), a.get("handle", ""), a.get("party", ""),
-            a.get("source", ""), stance_word.get(a.get("stance", ""), a.get("stance", "")),
+            a.get("page", ""), page_url, pid, a.get("handle", ""),
+            a.get("party", ""), a.get("source", ""),
+            stance_word.get(a.get("stance", ""), a.get("stance", "")),
             (a.get("damage_level") or "").upper(),
             a.get("narrative", "") or a.get("theme", ""),
             a.get("narrative_summary", ""), a.get("spend", ""), a.get("impr", ""),
@@ -322,7 +326,7 @@ def api_export():
     ws.freeze_panes = "A2"
 
     # Column widths (rough but readable)
-    widths = [26, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
+    widths = [26, 40, 16, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
 
