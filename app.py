@@ -20,8 +20,10 @@ try:
 except Exception:
     pass
 
+from io import BytesIO
+
 from flask import (Flask, jsonify, redirect, render_template, request,
-                   session, url_for)
+                   session, url_for, send_file)
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import config
@@ -266,6 +268,72 @@ def api_history():
         "snapshots": items,
         "insights": history.compute_insights(items),
     })
+
+
+@app.route("/api/export")
+@login_required
+def api_export():
+    """Saari ads ka data Excel (.xlsx) mein export karo (download)."""
+    with _CACHE_LOCK:
+        ads = list(CACHE.get("ads", []))
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+    except Exception:
+        return jsonify({"ok": False, "error": "openpyxl not installed"}), 500
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Opponent Ads"
+
+    headers = [
+        "Facebook Page", "Handle", "Party", "Source", "Stance", "Damage Level",
+        "Narrative", "AI Summary", "Spend (range)", "Impressions (range)",
+        "Audience", "Regions", "Platforms", "Started", "Theme (keyword)",
+        "Ad Text", "View on Meta (link)", "Ad ID",
+    ]
+    ws.append(headers)
+
+    stance_word = {"against": "Against AAP", "support": "Pro-AAP",
+                   "neutral": "Neutral", "unknown": ""}
+    for a in ads:
+        aud = a.get("audience") or {}
+        aud_str = (f"{aud.get('gender_pct','')}% {aud.get('gender_top','')}, "
+                   f"{aud.get('age_top','')}") if aud else ""
+        ws.append([
+            a.get("page", ""), a.get("handle", ""), a.get("party", ""),
+            a.get("source", ""), stance_word.get(a.get("stance", ""), a.get("stance", "")),
+            (a.get("damage_level") or "").upper(),
+            a.get("narrative", "") or a.get("theme", ""),
+            a.get("narrative_summary", ""), a.get("spend", ""), a.get("impr", ""),
+            aud_str, ", ".join(a.get("regions", []) or []),
+            ", ".join(a.get("plat", []) or []), a.get("start", ""),
+            a.get("theme", ""), a.get("text", ""), a.get("snapshot_url", ""),
+            a.get("id", ""),
+        ])
+
+    # Header styling
+    hdr_font = Font(bold=True, color="FFFFFF")
+    hdr_fill = PatternFill("solid", fgColor="1F2A37")
+    for cell in ws[1]:
+        cell.font = hdr_font
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(vertical="center")
+    ws.freeze_panes = "A2"
+
+    # Column widths (rough but readable)
+    widths = [26, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    bio = BytesIO()
+    wb.save(bio)
+    bio.seek(0)
+    fname = "narrative_intelligence_ads.xlsx"
+    return send_file(
+        bio, as_attachment=True, download_name=fname,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/health")

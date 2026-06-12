@@ -383,6 +383,7 @@
     <button class="topbtn" id="dmgBtn" style="border-color:rgba(255,93,108,.5);color:var(--danger)">🔥 Damage Radar</button>
     <button class="topbtn" id="trendsBtn" style="border-color:rgba(47,129,247,.5);color:var(--accent2)">📈 Trends</button>
     <button class="topbtn" id="strategyBtn" style="border-color:rgba(0,229,160,.5);color:var(--accent)">🧠 Strategy Brief</button>
+    <button class="topbtn" id="exportBtn" style="border-color:rgba(31,193,107,.5);color:var(--sad)" title="Saari ads Excel mein download">⬇️ Excel</button>
     <button class="topbtn" id="refreshBtn">↻ Refresh</button>
     <a class="topbtn ghost" href="/logout">Logout</a>
   </header>
@@ -1216,6 +1217,17 @@
             '<b>🎨 Visual:</b> '+esc(c.visual_idea)+'</div>';
         }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
     }
+
+    // ===================== EXCEL EXPORT =====================
+    document.getElementById("exportBtn").addEventListener("click",()=>{
+      const btn=document.getElementById("exportBtn");
+      const old=btn.textContent; btn.textContent="⏳ ban raha…";
+      // direct download (session cookie auth bhejta hai)
+      const a=document.createElement("a");
+      a.href="/api/export"; a.download="narrative_intelligence_ads.xlsx";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>{ btn.textContent=old; }, 2000);
+    });
 
     // ===================== MANUAL REFRESH =====================
     document.getElementById("refreshBtn").addEventListener("click",async()=>{
