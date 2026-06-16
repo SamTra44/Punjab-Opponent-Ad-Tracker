@@ -32,6 +32,7 @@ import classifier
 import strategy
 import history
 import intelligence
+import archive
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -101,6 +102,12 @@ def refresh_cache():
         history.record_snapshot(payload)
     except Exception as e:
         log.warning("history record skipped: %s", e)
+
+    # Ad Archive: har ad ka permanent record (active/stopped tracking).
+    try:
+        archive.record_ads(payload.get("ads", []), payload.get("mode", "demo"))
+    except Exception as e:
+        log.warning("archive record skipped: %s", e)
     log.info("Cache updated: mode=%s count=%s top_spender=%s",
              payload.get("mode"), payload.get("count"),
              payload.get("top_spender"))
@@ -258,6 +265,35 @@ def api_creative():
     return jsonify({"ok": True, "creative": creative})
 
 
+@app.route("/api/archive")
+@login_required
+def api_archive():
+    """Ad archive — saari pool ki gayi ads (active + stopped) with dates."""
+    status = request.args.get("status", "all")
+    days = request.args.get("days")
+    party = request.args.get("party", "ALL")
+    stance = request.args.get("stance", "ALL")
+    ads = archive.get_archive(status=status, days=days, party=party, stance=stance)
+    return jsonify({"count": len(ads), "ads": ads, "stats": archive.stats()})
+
+
+@app.route("/api/archive/stats")
+@login_required
+def api_archive_stats():
+    return jsonify(archive.stats())
+
+
+@app.route("/api/export/archive")
+@login_required
+def api_export_archive():
+    """Poore archive ka Excel (active + stopped, with first/last seen)."""
+    status = request.args.get("status", "all")
+    days = request.args.get("days")
+    ads = archive.get_archive(status=status, days=days, limit=100000)
+    return _build_ads_xlsx(ads, "narrative_intelligence_archive.xlsx",
+                           include_archive_cols=True)
+
+
 @app.route("/api/history")
 @login_required
 def api_history():
@@ -270,12 +306,9 @@ def api_history():
     })
 
 
-@app.route("/api/export")
-@login_required
-def api_export():
-    """Saari ads ka data Excel (.xlsx) mein export karo (download)."""
-    with _CACHE_LOCK:
-        ads = list(CACHE.get("ads", []))
+def _build_ads_xlsx(ads, fname, include_archive_cols=False):
+    """Ads list se ek styled .xlsx banao aur download response do.
+    include_archive_cols=True -> Status/First Seen/Last Seen/Stopped At bhi."""
     try:
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment
@@ -284,7 +317,7 @@ def api_export():
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Opponent Ads"
+    ws.title = "Ads"
 
     headers = [
         "Facebook Page", "Facebook Page URL", "Page ID", "Handle", "Party",
@@ -293,17 +326,25 @@ def api_export():
         "Platforms", "Started", "Theme (keyword)", "Ad Text",
         "View Ad on Meta (link)", "Ad ID",
     ]
+    widths = [26, 40, 16, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
+    if include_archive_cols:
+        headers += ["Status", "First Seen", "Last Seen", "Stopped At"]
+        widths += [12, 17, 17, 17]
     ws.append(headers)
 
     stance_word = {"against": "Against AAP", "support": "Pro-AAP",
                    "neutral": "Neutral", "unknown": ""}
+
+    def _ts(t):
+        return (t or "")[:16].replace("T", " ")
+
     for a in ads:
         aud = a.get("audience") or {}
         aud_str = (f"{aud.get('gender_pct','')}% {aud.get('gender_top','')}, "
                    f"{aud.get('age_top','')}") if aud else ""
         pid = str(a.get("page_id", "") or "").strip()
         page_url = f"https://www.facebook.com/{pid}" if pid else ""
-        ws.append([
+        row = [
             a.get("page", ""), page_url, pid, a.get("handle", ""),
             a.get("party", ""), a.get("source", ""),
             stance_word.get(a.get("stance", ""), a.get("stance", "")),
@@ -311,12 +352,19 @@ def api_export():
             a.get("narrative", "") or a.get("theme", ""),
             a.get("narrative_summary", ""), a.get("spend", ""), a.get("impr", ""),
             aud_str, ", ".join(a.get("regions", []) or []),
-            ", ".join(a.get("plat", []) or []), a.get("start", ""),
+            ", ".join(a.get("plat", []) or []),
+            a.get("start", "") or a.get("started", ""),
             a.get("theme", ""), a.get("text", ""), a.get("snapshot_url", ""),
             a.get("id", ""),
-        ])
+        ]
+        if include_archive_cols:
+            row += [
+                "ACTIVE" if a.get("active") else "STOPPED",
+                _ts(a.get("first_seen")), _ts(a.get("last_seen")),
+                _ts(a.get("stopped_at")),
+            ]
+        ws.append(row)
 
-    # Header styling
     hdr_font = Font(bold=True, color="FFFFFF")
     hdr_fill = PatternFill("solid", fgColor="1F2A37")
     for cell in ws[1]:
@@ -324,20 +372,25 @@ def api_export():
         cell.fill = hdr_fill
         cell.alignment = Alignment(vertical="center")
     ws.freeze_panes = "A2"
-
-    # Column widths (rough but readable)
-    widths = [26, 40, 16, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
 
     bio = BytesIO()
     wb.save(bio)
     bio.seek(0)
-    fname = "narrative_intelligence_ads.xlsx"
     return send_file(
         bio, as_attachment=True, download_name=fname,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@app.route("/api/export")
+@login_required
+def api_export():
+    """Current (active) ads ka Excel export."""
+    with _CACHE_LOCK:
+        ads = list(CACHE.get("ads", []))
+    return _build_ads_xlsx(ads, "narrative_intelligence_ads.xlsx")
 
 
 @app.route("/health")

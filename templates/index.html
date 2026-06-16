@@ -365,6 +365,33 @@
     #intelOverlay .crmeta b{color:#fff}
     #intelOverlay .crmeta .tag{display:inline-block;background:rgba(47,129,247,.15);border:1px solid rgba(47,129,247,.3);
       color:#9dc3ff;font-size:11px;padding:2px 8px;border-radius:5px;margin:2px 3px 0 0}
+
+    /* ===================== ARCHIVE MODAL ===================== */
+    #archOverlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+      background:rgba(5,8,12,.94);align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+    #archOverlay.show{display:flex}
+    #archOverlay .modal{display:block !important;width:100%;max-width:920px;height:auto !important;
+      background:#0f151d;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    #archOverlay .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;
+      border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f151d;border-radius:16px 16px 0 0;z-index:2}
+    #archOverlay .mtitle{font-size:18px;font-weight:800}
+    #archOverlay .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    #archOverlay .mbody{display:block;padding:20px 22px}
+    #archOverlay .agrid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+    #archOverlay .astat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+    #archOverlay .astat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+    #archOverlay .astat .v{font-size:20px;font-weight:800;margin-top:3px}
+    #archOverlay .arow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);
+      border-radius:10px;padding:10px 13px;margin-bottom:8px;background:var(--panel2);font-size:12.5px}
+    #archOverlay .arow.stopped{opacity:.72;border-left:3px solid var(--danger)}
+    #archOverlay .arow.active{border-left:3px solid var(--sad)}
+    #archOverlay .apage{font-weight:700;font-size:13px;min-width:150px}
+    #archOverlay .astatus{font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:5px;text-transform:uppercase}
+    #archOverlay .astatus.active{background:rgba(31,193,107,.18);color:var(--sad);border:1px solid rgba(31,193,107,.4)}
+    #archOverlay .astatus.stopped{background:rgba(255,93,108,.18);color:var(--danger);border:1px solid rgba(255,93,108,.4)}
+    #archOverlay .adate{color:var(--muted);font-size:11px}
+    #archOverlay .anarr{font-size:11px;padding:1px 7px;border-radius:5px;background:rgba(47,129,247,.12);
+      border:1px solid rgba(47,129,247,.3);color:#9dc3ff}
   </style>
 </head>
 <body>
@@ -379,6 +406,7 @@
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
     </div>
+    <button class="topbtn" id="archBtn" style="border-color:rgba(255,180,84,.5);color:var(--warn)">🗄️ Archive</button>
     <button class="topbtn" id="intelBtn" style="border-color:rgba(155,107,255,.6);color:#b69bff">🧠 Intelligence</button>
     <button class="topbtn" id="dmgBtn" style="border-color:rgba(255,93,108,.5);color:var(--danger)">🔥 Damage Radar</button>
     <button class="topbtn" id="trendsBtn" style="border-color:rgba(47,129,247,.5);color:var(--accent2)">📈 Trends</button>
@@ -418,6 +446,34 @@
       </div>
       <div class="mbody" id="trendBody">
         <div class="muted" style="text-align:center;padding:40px">Loading trends…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ARCHIVE MODAL ===================== -->
+  <div id="archOverlay" class="overlay" onclick="if(event.target===this)closeArch()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">🗄️ Ad Archive</div>
+          <div class="msub">Har pool ki gayi ad ka permanent record — active + band ho gayi</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="topbtn" id="archExport" onclick="exportArchive()" style="border-color:rgba(31,193,107,.5);color:var(--sad)">⬇️ Excel</button>
+          <button class="topbtn ghost" onclick="closeArch()">✕ Close</button>
+        </div>
+      </div>
+      <div class="mbody">
+        <div id="archStats" class="agrid2"></div>
+        <div class="frow" style="margin:14px 0">
+          <span class="flabel">Status</span>
+          <div class="chip active" data-astatus="all" onclick="setArchStatus(this)">Sabhi</div>
+          <div class="chip" data-astatus="active" onclick="setArchStatus(this)">🟢 Active</div>
+          <div class="chip" data-astatus="stopped" onclick="setArchStatus(this)">🛑 Band ho gayi</div>
+          <span class="flabel" style="margin-left:14px">Time</span>
+          <div class="chip active" data-adays="" onclick="setArchDays(this)">All</div>
+          <div class="chip" data-adays="7" onclick="setArchDays(this)">Last 7 din</div>
+          <div class="chip" data-adays="30" onclick="setArchDays(this)">Last 30 din</div>
+        </div>
+        <div id="archBody"><div class="muted" style="font-size:12px">Loading…</div></div>
       </div>
     </div>
   </div>
@@ -1216,6 +1272,65 @@
             '<b># Hashtags:</b> '+tags+'<br>'+
             '<b>🎨 Visual:</b> '+esc(c.visual_idea)+'</div>';
         }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+
+    // ===================== AD ARCHIVE =====================
+    let ARCH={status:"all",days:""};
+    function closeArch(){ document.getElementById("archOverlay").classList.remove("show"); }
+    document.getElementById("archBtn").addEventListener("click",()=>{
+      document.getElementById("archOverlay").classList.add("show");
+      loadArchive();
+    });
+    function setArchStatus(el){
+      document.querySelectorAll('[data-astatus]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active"); ARCH.status=el.dataset.astatus; loadArchive();
+    }
+    function setArchDays(el){
+      document.querySelectorAll('[data-adays]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active"); ARCH.days=el.dataset.adays; loadArchive();
+    }
+    function loadArchive(){
+      const body=document.getElementById("archBody");
+      body.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Archive load ho raha…</div></div>';
+      let url="/api/archive?status="+ARCH.status+(ARCH.days?("&days="+ARCH.days):"");
+      getJSON(url).then(d=>{
+        // stats
+        const s=d.stats||{};
+        document.getElementById("archStats").innerHTML=
+          '<div class="astat"><div class="k">Total Ads</div><div class="v">'+(s.total||0)+'</div></div>'+
+          '<div class="astat"><div class="k">🟢 Active</div><div class="v">'+(s.active||0)+'</div></div>'+
+          '<div class="astat"><div class="k">🛑 Band</div><div class="v">'+(s.stopped||0)+'</div></div>'+
+          '<div class="astat"><div class="k">Naye (aaj)</div><div class="v">'+(s.new_today||0)+'</div></div>'+
+          '<div class="astat"><div class="k">Band (aaj)</div><div class="v">'+(s.stopped_today||0)+'</div></div>'+
+          '<div class="astat"><div class="k">Active 30d</div><div class="v">'+(s.active_30d||0)+'</div></div>';
+        // list
+        const ads=d.ads||[];
+        if(!ads.length){ body.innerHTML='<div class="empty">Is filter ke liye koi ad nahi.<br><span class="muted">(Archive abhi bharna shuru hua hai — har refresh pe data jamaa hoga)</span></div>'; return; }
+        body.innerHTML='<div class="msub" style="margin-bottom:10px">'+ads.length+' ads — '+
+          'naye sabse upar. 🟢 abhi chal rahi, 🛑 band ho chuki.</div>'+
+          ads.map(archRow).join("");
+      }).catch(e=>{ body.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+    function archRow(a){
+      const st=a.active?"active":"stopped";
+      const stoppedTxt=a.stopped_at?(' · 🛑 band: '+esc((a.stopped_at||"").slice(0,10))):"";
+      const stLabel=a.active?"🟢 ACTIVE":"🛑 STOPPED";
+      return '<div class="arow '+st+'">'+
+        '<span class="astatus '+st+'">'+stLabel+'</span>'+
+        '<span class="apage">'+esc(a.page)+'</span>'+
+        '<span class="anarr">'+esc(a.narrative||a.theme||"")+'</span>'+
+        '<span class="adate">📅 shuru: '+esc((a.first_seen||"").slice(0,10))+
+        ' · last seen: '+esc((a.last_seen||"").slice(0,10))+stoppedTxt+'</span>'+
+        (a.snapshot_url?'<a class="adate" style="color:var(--accent)" href="'+a.snapshot_url+'" target="_blank" rel="noopener">↗ Meta</a>':'')+
+      '</div>';
+    }
+    function exportArchive(){
+      const btn=document.getElementById("archExport"); const old=btn.textContent; btn.textContent="⏳…";
+      const a=document.createElement("a");
+      a.href="/api/export/archive?status="+ARCH.status+(ARCH.days?("&days="+ARCH.days):"");
+      a.download="narrative_intelligence_archive.xlsx";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>{ btn.textContent=old; },2000);
     }
 
     // ===================== EXCEL EXPORT =====================
