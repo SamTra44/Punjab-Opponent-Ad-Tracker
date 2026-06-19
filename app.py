@@ -86,6 +86,8 @@ def refresh_cache():
     # Sirf naye ads classify hote hain (cached), isliye yeh fast rehta hai.
     try:
         classifier.enrich_ads(payload.get("ads", []))
+        # Pro-AAP ad opponent party ki nahi ho sakti — proxy party fix karo.
+        meta_api.correct_proxy_party(payload.get("ads", []))
         payload.update(classifier.build_ai_aggregates(payload.get("ads", [])))
         # Damage Radar: stance ke baad anti-AAP ads ko threat-rank karo.
         meta_api.assign_damage_levels(payload.get("ads", []))

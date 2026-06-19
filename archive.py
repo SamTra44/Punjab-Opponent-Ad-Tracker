@@ -135,6 +135,7 @@ def record_ads(ads, mode="live"):
         "VALUES (%s, 1, NULL) "
         "ON CONFLICT(id) DO UPDATE SET "
         "last_seen=excluded.last_seen, active=1, stopped_at=NULL, "
+        "party=excluded.party, "
         "stance=excluded.stance, narrative=excluded.narrative, "
         "narrative_summary=excluded.narrative_summary, "
         "spend=excluded.spend, impr=excluded.impr, "

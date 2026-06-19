@@ -288,6 +288,24 @@ def normalize_ad(raw):
     }
 
 
+def correct_proxy_party(ads):
+    """
+    Stance ke baad party fix: ek PRO-AAP (support) ad kabhi opponent party
+    (BJP/INC/SAD) ki nahi ho sakti. Aise non-official pages (jaise "Fraud to
+    be Akali") jinhe page-naam ke keyword se galat opponent guess kar liya tha,
+    unhe AAP-side proxy ("OTHER") maan lo. Official opponent pages chhuo mat.
+    """
+    fixed = 0
+    for a in ads:
+        if (a.get("stance") == "support" and not a.get("is_official")
+                and a.get("party") in ("BJP", "INC", "SAD")):
+            a["party"] = "OTHER"
+            fixed += 1
+    if fixed:
+        log.info("party corrected for %d pro-AAP proxy ads (opponent -> OTHER)", fixed)
+    return fixed
+
+
 # =============================================================================
 # 3) AGGREGATES: party spend bars, top themes, top spender
 # =============================================================================
