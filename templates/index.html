@@ -1323,36 +1323,54 @@
     });
     const PARTY_COL2={BJP:"#ff7a18",INC:"#19a7e0",SAD:"#1fc16b",AAP:"#3b6cff",OTHER:"#9aa6b2"};
     const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+    function spendPartyBars(bp){
+      const maxp=Math.max(1,...bp.map(p=>p.spend));
+      if(!bp.length) return '<div class="muted" style="font-size:12px">Koi data nahi</div>';
+      return bp.map(p=>{
+        const c=PARTY_COL2[p.party]||PARTY_COL2.OTHER; const pct=Math.round(p.spend/maxp*100);
+        return '<div class="pbar"><div class="row"><span>'+esc(PARTY_LABEL[p.party]||p.party)+
+          ' <span class="muted" style="font-size:11px">('+p.count+' ads)</span></span><b>'+inr(p.spend)+'</b></div>'+
+          '<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:'+c+'"></div></div></div>';
+      }).join("");
+    }
     function loadSpend(){
       const box=document.getElementById("spendBody");
       box.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Calculate ho raha…</div></div>';
       getJSON("/api/spend").then(d=>{
         if(!d.available){ box.innerHTML='<div class="empty">Abhi data nahi (archive bhar raha hai).</div>'; return; }
-        const bp=d.by_party||[]; const maxp=Math.max(1,...bp.map(p=>p.spend));
-        let h='<div class="bignum"><div class="lbl">⚔️ AAP ke khilaf total estimated spend</div>'+
-          '<div class="v">'+inr(d.total)+'</div>'+
-          '<div class="sub">'+d.ads+' anti-AAP ads · abhi active mein '+inr(d.active_spend)+' chal raha</div></div>';
-        h+='<h4>🎯 Kis party ne kitna lagaya (AAP ke against)</h4>';
-        bp.forEach(p=>{
-          const c=PARTY_COL2[p.party]||PARTY_COL2.OTHER; const pct=Math.round(p.spend/maxp*100);
-          h+='<div class="pbar"><div class="row"><span>'+esc(PARTY_LABEL[p.party]||p.party)+
-            ' <span class="muted" style="font-size:11px">('+p.count+' ads)</span></span><b>'+inr(p.spend)+'</b></div>'+
-            '<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:'+c+'"></div></div></div>';
-        });
-        h+='<h4>📈 Daily — kis din kitni nayi anti-AAP spend aayi</h4>'+
+        const ag=d.against||{by_party:[],daily:[]}, su=d.support||{by_party:[],daily:[]};
+        let h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">'+
+          '<div class="bignum"><div class="lbl" style="color:var(--danger)">⚔️ AAP ke KHILAF</div>'+
+            '<div class="v">'+inr(ag.total)+'</div>'+
+            '<div class="sub">'+(ag.ads||0)+' anti-AAP ads · active '+inr(ag.active_spend)+'</div></div>'+
+          '<div class="bignum" style="background:linear-gradient(135deg,rgba(31,193,107,.12),rgba(0,229,160,.1));border-color:rgba(31,193,107,.35)">'+
+            '<div class="lbl" style="color:var(--sad)">🤝 AAP ke SUPPORT mein</div>'+
+            '<div class="v">'+inr(su.total)+'</div>'+
+            '<div class="sub">'+(su.ads||0)+' pro-AAP ads · active '+inr(su.active_spend)+'</div></div>'+
+          '</div>';
+        h+='<h4 style="color:var(--danger)">⚔️ Against AAP — kis party ne kitna lagaya</h4>'+spendPartyBars(ag.by_party);
+        h+='<h4 style="color:var(--sad)">🤝 Pro-AAP support — kahan se aa raha</h4>'+spendPartyBars(su.by_party);
+        h+='<h4>📈 Daily spend — Against (laal) vs Support (hara)</h4>'+
           '<canvas id="spendDaily"></canvas>'+
-          '<div class="note">📌 Spend Meta ke range ka estimate (midpoint) hai. Archive permanent hai — yeh data kabhi nahi mitega, roz auto-update hota hai.</div>';
+          '<div class="note">📌 Spend Meta ke range ka estimate (midpoint). Archive permanent hai — data kabhi nahi mitega, roz auto-update.</div>';
         box.innerHTML=h;
-        drawSpendChart(d.daily||[]);
+        drawSpendChart(ag.daily||[], su.daily||[]);
       }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
     }
-    function drawSpendChart(daily){
-      if(typeof Chart==="undefined"||!daily.length) return;
+    function drawSpendChart(agDaily, suDaily){
+      if(typeof Chart==="undefined") return;
       const ctx=document.getElementById("spendDaily"); if(!ctx) return;
+      // saare unique din merge karo
+      const days=[...new Set([...agDaily.map(x=>x.day),...suDaily.map(x=>x.day)])].sort();
+      const agMap={}; agDaily.forEach(x=>agMap[x.day]=x.spend);
+      const suMap={}; suDaily.forEach(x=>suMap[x.day]=x.spend);
+      if(!days.length) return;
       if(spendChart) spendChart.destroy();
-      spendChart=new Chart(ctx,{type:"bar",data:{labels:daily.map(x=>x.day.slice(5)),
-        datasets:[{label:"Anti-AAP spend (₹)",data:daily.map(x=>x.spend),
-          backgroundColor:"rgba(255,93,108,.6)",borderColor:"#ff5d6c",borderWidth:1}]},
+      spendChart=new Chart(ctx,{type:"bar",data:{labels:days.map(x=>x.slice(5)),
+        datasets:[
+          {label:"⚔️ Against AAP",data:days.map(x=>agMap[x]||0),backgroundColor:"rgba(255,93,108,.65)",borderColor:"#ff5d6c",borderWidth:1},
+          {label:"🤝 Pro-AAP",data:days.map(x=>suMap[x]||0),backgroundColor:"rgba(31,193,107,.6)",borderColor:"#1fc16b",borderWidth:1}
+        ]},
         options:{plugins:{legend:{labels:{color:"#8b98a8"}}},
           scales:{x:{ticks:{color:"#8b98a8"},grid:{color:"#1e2a38"}},
             y:{ticks:{color:"#8b98a8",callback:v=>"₹"+(v/1000)+"k"},grid:{color:"#1e2a38"}}}}});
