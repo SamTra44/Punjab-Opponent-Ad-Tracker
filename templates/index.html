@@ -392,6 +392,31 @@
     #archOverlay .adate{color:var(--muted);font-size:11px}
     #archOverlay .anarr{font-size:11px;padding:1px 7px;border-radius:5px;background:rgba(47,129,247,.12);
       border:1px solid rgba(47,129,247,.3);color:#9dc3ff}
+
+    /* ===================== SPEND TRACKER MODAL ===================== */
+    #spendOverlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;
+      background:rgba(5,8,12,.94);align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+    #spendOverlay.show{display:flex}
+    #spendOverlay .modal{display:block !important;width:100%;max-width:880px;height:auto !important;
+      background:#0f151d;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    #spendOverlay .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;
+      border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f151d;border-radius:16px 16px 0 0;z-index:2}
+    #spendOverlay .mtitle{font-size:18px;font-weight:800}
+    #spendOverlay .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    #spendOverlay .mbody{display:block;padding:20px 22px}
+    #spendOverlay .bignum{background:linear-gradient(135deg,rgba(255,93,108,.12),rgba(255,122,24,.1));
+      border:1px solid rgba(255,122,24,.35);border-radius:14px;padding:20px 22px;margin-bottom:18px;text-align:center}
+    #spendOverlay .bignum .lbl{font-size:12px;color:var(--warn);text-transform:uppercase;letter-spacing:1px;font-weight:700}
+    #spendOverlay .bignum .v{font-size:40px;font-weight:900;color:#fff;margin:6px 0;letter-spacing:-1px}
+    #spendOverlay .bignum .sub{font-size:12px;color:var(--muted)}
+    #spendOverlay h4{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 12px}
+    #spendOverlay .pbar{margin-bottom:12px}
+    #spendOverlay .pbar .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+    #spendOverlay .pbar .row b{font-weight:800}
+    #spendOverlay .ptrack{height:11px;background:#0a0f15;border-radius:6px;overflow:hidden}
+    #spendOverlay .pfill{height:100%;border-radius:6px}
+    #spendOverlay canvas{max-height:230px;margin-top:6px}
+    #spendOverlay .note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic}
   </style>
 </head>
 <body>
@@ -406,6 +431,7 @@
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
     </div>
+    <button class="topbtn" id="spendBtn" style="border-color:rgba(255,122,24,.6);color:#ff9d4d">💰 Spend Tracker</button>
     <button class="topbtn" id="archBtn" style="border-color:rgba(255,180,84,.5);color:var(--warn)">🗄️ Archive</button>
     <button class="topbtn" id="intelBtn" style="border-color:rgba(155,107,255,.6);color:#b69bff">🧠 Intelligence</button>
     <button class="topbtn" id="dmgBtn" style="border-color:rgba(255,93,108,.5);color:var(--danger)">🔥 Damage Radar</button>
@@ -446,6 +472,20 @@
       </div>
       <div class="mbody" id="trendBody">
         <div class="muted" style="text-align:center;padding:40px">Loading trends…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== SPEND TRACKER MODAL ===================== -->
+  <div id="spendOverlay" class="overlay" onclick="if(event.target===this)closeSpend()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">💰 Spend Tracker — AAP ke khilaf</div>
+          <div class="msub">Opponents ne AAP ke against kitna paisa lagaya (permanent record)</div></div>
+        <button class="topbtn ghost" onclick="closeSpend()">✕ Close</button>
+      </div>
+      <div class="mbody" id="spendBody">
+        <div class="muted" style="font-size:12px">Loading…</div>
       </div>
     </div>
   </div>
@@ -1272,6 +1312,50 @@
             '<b># Hashtags:</b> '+tags+'<br>'+
             '<b>🎨 Visual:</b> '+esc(c.visual_idea)+'</div>';
         }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+
+    // ===================== SPEND TRACKER =====================
+    let spendChart=null;
+    function closeSpend(){ document.getElementById("spendOverlay").classList.remove("show"); }
+    document.getElementById("spendBtn").addEventListener("click",()=>{
+      document.getElementById("spendOverlay").classList.add("show");
+      loadSpend();
+    });
+    const PARTY_COL2={BJP:"#ff7a18",INC:"#19a7e0",SAD:"#1fc16b",AAP:"#3b6cff",OTHER:"#9aa6b2"};
+    const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+    function loadSpend(){
+      const box=document.getElementById("spendBody");
+      box.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Calculate ho raha…</div></div>';
+      getJSON("/api/spend").then(d=>{
+        if(!d.available){ box.innerHTML='<div class="empty">Abhi data nahi (archive bhar raha hai).</div>'; return; }
+        const bp=d.by_party||[]; const maxp=Math.max(1,...bp.map(p=>p.spend));
+        let h='<div class="bignum"><div class="lbl">⚔️ AAP ke khilaf total estimated spend</div>'+
+          '<div class="v">'+inr(d.total)+'</div>'+
+          '<div class="sub">'+d.ads+' anti-AAP ads · abhi active mein '+inr(d.active_spend)+' chal raha</div></div>';
+        h+='<h4>🎯 Kis party ne kitna lagaya (AAP ke against)</h4>';
+        bp.forEach(p=>{
+          const c=PARTY_COL2[p.party]||PARTY_COL2.OTHER; const pct=Math.round(p.spend/maxp*100);
+          h+='<div class="pbar"><div class="row"><span>'+esc(PARTY_LABEL[p.party]||p.party)+
+            ' <span class="muted" style="font-size:11px">('+p.count+' ads)</span></span><b>'+inr(p.spend)+'</b></div>'+
+            '<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:'+c+'"></div></div></div>';
+        });
+        h+='<h4>📈 Daily — kis din kitni nayi anti-AAP spend aayi</h4>'+
+          '<canvas id="spendDaily"></canvas>'+
+          '<div class="note">📌 Spend Meta ke range ka estimate (midpoint) hai. Archive permanent hai — yeh data kabhi nahi mitega, roz auto-update hota hai.</div>';
+        box.innerHTML=h;
+        drawSpendChart(d.daily||[]);
+      }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
+    function drawSpendChart(daily){
+      if(typeof Chart==="undefined"||!daily.length) return;
+      const ctx=document.getElementById("spendDaily"); if(!ctx) return;
+      if(spendChart) spendChart.destroy();
+      spendChart=new Chart(ctx,{type:"bar",data:{labels:daily.map(x=>x.day.slice(5)),
+        datasets:[{label:"Anti-AAP spend (₹)",data:daily.map(x=>x.spend),
+          backgroundColor:"rgba(255,93,108,.6)",borderColor:"#ff5d6c",borderWidth:1}]},
+        options:{plugins:{legend:{labels:{color:"#8b98a8"}}},
+          scales:{x:{ticks:{color:"#8b98a8"},grid:{color:"#1e2a38"}},
+            y:{ticks:{color:"#8b98a8",callback:v=>"₹"+(v/1000)+"k"},grid:{color:"#1e2a38"}}}}});
     }
 
     // ===================== AD ARCHIVE =====================

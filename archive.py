@@ -196,6 +196,44 @@ def get_archive(status="all", days=None, party=None, stance=None, limit=800):
         return []
 
 
+def spend_tracker():
+    """
+    AAP ke KHILAF total spend (archive se — permanent, kabhi nahi mitega).
+    - total: ab tak ki estimated anti-AAP spend (sab against ads ka spend_mid)
+    - by_party: kis party ne kitna lagaya
+    - daily: kis din kitni NAYI anti-AAP spend aayi (first_seen ke hisaab se)
+    """
+    def num(x):
+        try:
+            return float(x or 0)
+        except Exception:
+            return 0.0
+    try:
+        total = num(_query("SELECT COALESCE(SUM(spend_mid),0) AS s FROM "
+                           "ads_archive WHERE stance='against'")[0]["s"])
+        active = num(_query("SELECT COALESCE(SUM(spend_mid),0) AS s FROM "
+                            "ads_archive WHERE stance='against' AND active=1")[0]["s"])
+        n = _query("SELECT COUNT(*) AS c FROM ads_archive WHERE stance='against'")[0]["c"]
+        bp = _query("SELECT party, COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
+                    "FROM ads_archive WHERE stance='against' GROUP BY party "
+                    "ORDER BY s DESC")
+        daily = _query("SELECT substr(first_seen,1,10) AS day, "
+                       "COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
+                       "FROM ads_archive WHERE stance='against' "
+                       "GROUP BY substr(first_seen,1,10) ORDER BY day")
+        return {
+            "available": True,
+            "total": round(total), "active_spend": round(active), "ads": n,
+            "by_party": [{"party": r["party"] or "OTHER", "spend": round(num(r["s"])),
+                          "count": r["c"]} for r in bp],
+            "daily": [{"day": r["day"], "spend": round(num(r["s"])),
+                       "count": r["c"]} for r in daily if r["day"]],
+        }
+    except Exception as e:
+        log.warning("spend_tracker failed: %s", e)
+        return {"available": False}
+
+
 def stats():
     today = datetime.now(timezone.utc).date().isoformat()
     d7 = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()

@@ -283,6 +283,13 @@ def api_archive_stats():
     return jsonify(archive.stats())
 
 
+@app.route("/api/spend")
+@login_required
+def api_spend():
+    """Spend Tracker — AAP ke khilaf total + party-wise + daily spend (archive se)."""
+    return jsonify(archive.spend_tracker())
+
+
 @app.route("/api/export/archive")
 @login_required
 def api_export_archive():
