@@ -74,10 +74,31 @@ _SYSTEM = (
     "- 'BJP ne Congress nu expose kita' -> neutral\n"
     "- 'Congress di purani misgovernance, AAP behtar' -> support\n"
     "- 'AAP ne 50000 naukri ditti' -> support\n\n"
+    "Also identify party = which side is BEHIND the ad (who sponsors/benefits) "
+    "by READING the ad message AND page name — never from a name keyword alone:\n"
+    "   - 'BJP' = Bharatiya Janata Party or its proxies.\n"
+    "   - 'INC' = Congress.\n"
+    "   - 'SAD' = Shiromani Akali Dal (Badal).\n"
+    "   - 'AAP' = Aam Aadmi Party or PRO-AAP proxy pages.\n"
+    "   - 'OTHER' = independent / news / farmer-union / unclear.\n"
+    "Judge by who the ad PROMOTES or DEFENDS, not who it merely names.\n"
+    "⚠️ IRON RULE: an ad that ATTACKS/mocks a party is NEVER sponsored by that "
+    "same party. A page bashing Congress (e.g. 'Pappu Congress') is NOT 'INC'. "
+    "A page mocking Akalis (e.g. 'Fraud to be Akali') is NOT 'SAD'. A page "
+    "attacking BJP is NOT 'BJP'. For such a page, pick the side it actually "
+    "PROMOTES — if it praises AAP, party='AAP'; if it pushes BJP, party='BJP'; "
+    "if no party is clearly promoted, party='OTHER'. Never label a page with "
+    "the party it is attacking.\n"
+    "Party examples:\n"
+    "- ad bashes Congress over 1984, promotes nobody -> OTHER (NOT INC)\n"
+    "- 'Fraud to be Akali' praises AAP -> AAP\n"
+    "- 'BJP Punjab' attacks Mann -> BJP\n"
+    "- 'Sukhbir Badal' defends Panth, slams Mann -> SAD\n"
+    "- official AAP page praising Mann -> AAP\n\n"
     "Then give: narrative = best-fitting theme from the allowed list; "
     "narrative_summary = punchy <=12 word English summary of the ad's core "
     "message (e.g. 'Blames Mann govt for rising drug crisis'). "
-    "Getting the TARGET right is the most important part."
+    "Getting the stance TARGET and the sponsoring party right is most important."
 )
 
 # Structured output schema (JSON) — Claude isi format mein jawab dega.
@@ -92,11 +113,14 @@ _SCHEMA = {
                     "index": {"type": "integer"},
                     "stance": {"type": "string",
                                "enum": ["against", "support", "neutral"]},
+                    "party": {"type": "string",
+                              "enum": ["BJP", "INC", "SAD", "AAP", "OTHER"]},
                     "narrative": {"type": "string",
                                   "enum": config.NARRATIVE_CATEGORIES},
                     "narrative_summary": {"type": "string"},
                 },
-                "required": ["index", "stance", "narrative", "narrative_summary"],
+                "required": ["index", "stance", "party", "narrative",
+                             "narrative_summary"],
                 "additionalProperties": False,
             },
         }
@@ -105,7 +129,8 @@ _SCHEMA = {
     "additionalProperties": False,
 }
 
-_UNKNOWN = {"stance": "unknown", "narrative": "Other", "narrative_summary": ""}
+_UNKNOWN = {"stance": "unknown", "party": "OTHER", "narrative": "Other",
+            "narrative_summary": ""}
 
 
 def _classify_batch(batch):
@@ -127,7 +152,7 @@ def _classify_batch(batch):
     try:
         resp = _client.messages.create(
             model=config.CLASSIFY_MODEL,
-            max_tokens=1500,
+            max_tokens=2200,
             system=_SYSTEM,
             messages=[{"role": "user", "content": user_msg}],
             output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
@@ -146,6 +171,7 @@ def _classify_batch(batch):
             aid = batch[idx][0]
             out[aid] = {
                 "stance": item.get("stance", "unknown"),
+                "party": item.get("party", "OTHER"),
                 "narrative": item.get("narrative", "Other"),
                 "narrative_summary": (item.get("narrative_summary", "") or "")[:120],
             }
@@ -193,6 +219,13 @@ def enrich_ads(ads):
         a["stance"] = res.get("stance", "unknown")
         a["narrative"] = res.get("narrative", "Other")
         a["narrative_summary"] = res.get("narrative_summary", "")
+        # Party: official page = pakka ground-truth; warna Claude ka padha hua
+        # jawab (keyword guess ki jagah). AI ne na diya to purana value rehne do.
+        official = config.PAGE_TO_PARTY.get(str(a.get("page_id")))
+        if official:
+            a["party"] = official
+        elif res.get("party"):
+            a["party"] = res["party"]
     return True
 
 
