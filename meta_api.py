@@ -297,9 +297,19 @@ def correct_proxy_party(ads):
     """
     fixed = 0
     for a in ads:
-        if a.get("is_official"):
-            continue  # official page = pakka ground-truth, chhuo mat
         stance, party = a.get("stance"), a.get("party")
+        if a.get("is_official"):
+            # Official page ka PARTY pakka — par stance contradiction theek karo:
+            # official opponent page AAP ko support nahi karta; AAP page khud ko
+            # attack nahi karta. Aisa ho to stance neutral (galat claim na ho).
+            if party in ("BJP", "INC", "SAD") and stance == "support":
+                a["stance"] = "neutral"
+                fixed += 1
+            elif party == "AAP" and stance == "against":
+                a["stance"] = "neutral"
+                fixed += 1
+            continue
+        # Non-official: party guess theek karo (Claude ke baad bhi safety).
         # support (pro-AAP) ad opponent party ki nahi ho sakti
         if stance == "support" and party in ("BJP", "INC", "SAD"):
             a["party"] = "OTHER"
@@ -309,7 +319,7 @@ def correct_proxy_party(ads):
             a["party"] = "OTHER"
             fixed += 1
     if fixed:
-        log.info("party corrected for %d contradictory ads (-> OTHER)", fixed)
+        log.info("reconciled %d contradictory party/stance ads", fixed)
     return fixed
 
 
