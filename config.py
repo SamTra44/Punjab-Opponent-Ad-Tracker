@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 
 import os
-from datetime import date, timedelta
+from datetime import date
 
 # --- Meta / Facebook Graph API settings -------------------------------------
 # Ek ya zyada tokens. Multiple tokens (alag apps se) rate-limit (#613) ko 6x tak
@@ -25,12 +25,11 @@ if not META_ACCESS_TOKEN and META_ACCESS_TOKENS:
 GRAPH_API_VERSION = os.environ.get("GRAPH_API_VERSION", "v21.0")
 GRAPH_BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}/ads_archive"
 
-# Kitne purane tak ki ads laani hain. Default ~18 months pichhe se (last year
-# 2025 ki ads bhi aayein). Env AD_HISTORY_DAYS ya AD_DELIVERY_DATE_MIN se badlo.
-_hist_days = int(os.environ.get("AD_HISTORY_DAYS", "550"))
+# Kitne purane tak ki ads laani hain. Default = is saal (2026) ke shuru se —
+# yaani sirf 2026 ki ads, purani nahi. Env AD_DELIVERY_DATE_MIN se badal sakte ho
+# (e.g. "2025-01-01" se last year bhi aa jayega).
 AD_DELIVERY_DATE_MIN = os.environ.get(
-    "AD_DELIVERY_DATE_MIN",
-    (date.today() - timedelta(days=_hist_days)).isoformat())
+    "AD_DELIVERY_DATE_MIN", date(date.today().year, 1, 1).isoformat())
 
 # Sirf India ke ads (Punjab specifically API se filter nahi hota, isliye
 # region-level filtering normalize step + frontend region chips se hoti hai).
