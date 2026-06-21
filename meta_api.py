@@ -7,6 +7,8 @@
 
 import logging
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -16,6 +18,7 @@ log = logging.getLogger("meta_api")
 
 # Network timeout (seconds) — taaki ek slow call poora app na hang kare.
 REQUEST_TIMEOUT = 25
+RATE_LIMIT_RETRIES = 3   # #613 rate-limit pe itni baar backoff-retry karo
 
 
 # =============================================================================
@@ -54,16 +57,28 @@ def _call_ads_archive(search_page_ids=None, search_terms=None, max_pages=None):
     pages = 0
 
     while url and pages < max_pages:
-        try:
-            # Pehli call params ke saath; aage paging.next full URL deta hai.
-            resp = requests.get(url, params=use_params, timeout=REQUEST_TIMEOUT)
-            payload = resp.json()
-        except requests.exceptions.RequestException as e:
-            log.warning("Meta API network error: %s", e)
-            return all_data, f"network error: {e}"
-        except ValueError as e:
-            log.warning("Meta API returned non-JSON: %s", e)
-            return all_data, f"bad response: {e}"
+        # Rate limit (#613) aaye to thoda ruk ke dobara try karo (backoff).
+        payload = None
+        delay = 6
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            try:
+                resp = requests.get(url, params=use_params, timeout=REQUEST_TIMEOUT)
+                payload = resp.json()
+            except requests.exceptions.RequestException as e:
+                log.warning("Meta API network error: %s", e)
+                return all_data, f"network error: {e}"
+            except ValueError as e:
+                log.warning("Meta API returned non-JSON: %s", e)
+                return all_data, f"bad response: {e}"
+
+            err_obj = payload.get("error") if isinstance(payload, dict) else None
+            if err_obj and (err_obj.get("code") == 613
+                            or "rate limit" in err_obj.get("message", "").lower()):
+                if attempt < RATE_LIMIT_RETRIES:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+            break  # success ya non-rate-limit error -> aage badho
 
         # Meta error object aaya?
         if isinstance(payload, dict) and "error" in payload:
@@ -376,26 +391,33 @@ def fetch_all_ads():
     errors = []
     got_any = False
 
-    # (a) OFFICIAL pages se fetch — known opponent Page IDs.
-    #     (Inko baad mein is_official=True tag mil jata hai page_id se.)
+    # Saare fetch jobs ikattha karo:
+    #  (a) OFFICIAL pages — known opponent Page IDs (is_official=True milta hai).
+    #  (b) BROAD search terms — Punjab-wide political ads (news/leaders/proxy bhi).
+    jobs = []  # list of (label, kwargs)
     for party, page_ids in config.OPPONENT_PAGES.items():
         clean_ids = [str(p) for p in page_ids if str(p).strip()]
-        if not clean_ids:
-            continue
-        data, err = _call_ads_archive(search_page_ids=clean_ids)
-        if err:
-            errors.append(f"{party} pages: {err}")
-        if data:
-            got_any = True
-            all_raw.extend(data)
-
-    # (b) BROAD search — Punjab-wide political ads (non-official bhi capture
-    #     hote hain: news pages, individual leaders, proxy/support pages).
+        if clean_ids:
+            jobs.append((f"{party} pages", {"search_page_ids": clean_ids}))
     if config.FETCH_ALL_POLITICAL:
         for term in config.SEARCH_TERMS:
-            data, err = _call_ads_archive(search_terms=term)
+            jobs.append((f"search '{term}'", {"search_terms": term}))
+
+    # Sab jobs PARALLEL mein chalao — har job apni paginated call karti hai.
+    # Sequential mein 48 terms * 10 pages bahut slow tha; threads se ~minutes me.
+    workers = max(1, min(config.MAX_FETCH_WORKERS, len(jobs) or 1))
+    log.info("Fetching %d queries with %d workers...", len(jobs), workers)
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = {ex.submit(_call_ads_archive, **kw): label for label, kw in jobs}
+        for fut in as_completed(futs):
+            label = futs[fut]
+            try:
+                data, err = fut.result()
+            except Exception as e:
+                errors.append(f"{label}: {e}")
+                continue
             if err:
-                errors.append(f"search '{term}': {err}")
+                errors.append(f"{label}: {err}")
             if data:
                 got_any = True
                 all_raw.extend(data)

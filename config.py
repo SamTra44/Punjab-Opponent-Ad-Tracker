@@ -109,23 +109,24 @@ FETCH_ALL_POLITICAL = os.environ.get("FETCH_ALL_POLITICAL", "1") not in ("0", "f
 # issues. Overlap chalega — baad mein ad-id se dedup ho jaata hai. Claude phir har
 # ad ko khud padh ke stance/party classify karta hai.
 SEARCH_TERMS = [
-    # --- widest nets (3 scripts) ---
+    # --- widest Punjab nets (Gurmukhi = lagbhag sirf Punjab ki ads) ---
     "ਪੰਜਾਬ", "Punjab", "पंजाब",
     "ਸਰਕਾਰ", "ਵੋਟ", "ਚੋਣ", "ਲੋਕ",            # govt / vote / election / people
-    "Punjab government", "Punjab election",
-    # --- parties ---
-    "Aam Aadmi Party", "ਆਮ ਆਦਮੀ ਪਾਰਟੀ", "AAP Punjab",
-    "BJP Punjab", "ਭਾਜਪਾ", "Bharatiya Janata Party",
-    "Punjab Congress", "ਕਾਂਗਰਸ", "कांग्रेस",
-    "Shiromani Akali Dal", "ਅਕਾਲੀ ਦਲ", "अकाली दल",
-    # --- leaders ---
-    "Bhagwant Mann", "ਭਗਵੰਤ ਮਾਨ", "Arvind Kejriwal", "ਕੇਜਰੀਵਾਲ",
+    "Punjab government", "Punjab election", "Punjab politics",
+    # --- parties (Punjab-qualified, taaki national noise na aaye) ---
+    "ਆਮ ਆਦਮੀ ਪਾਰਟੀ", "AAP Punjab",
+    "BJP Punjab", "ਭਾਜਪਾ ਪੰਜਾਬ",
+    "Punjab Congress", "ਕਾਂਗਰਸ ਪੰਜਾਬ",
+    "Shiromani Akali Dal", "ਅਕਾਲੀ ਦਲ",      # SAD khud Punjab-specific party hai
+    # --- leaders (sab Punjab ke — unambiguous) ---
+    "Bhagwant Mann", "ਭਗਵੰਤ ਮਾਨ", "ਕੇਜਰੀਵਾਲ",
     "Sukhbir Badal", "Sunil Jakhar", "Amarinder Singh",
     "Partap Singh Bajwa", "Ravneet Bittu", "Raja Warring", "Charanjit Channi",
-    # --- districts (Punjab-wide reach) ---
+    # --- districts (har ek pakka Punjab) ---
     "Amritsar", "Ludhiana", "Jalandhar", "Patiala", "Bathinda",
     "Mohali", "Hoshiarpur", "Ferozepur", "Sangrur", "Gurdaspur",
-    # --- issues / narratives ---
+    "Firozpur", "Moga", "Kapurthala", "Faridkot",
+    # --- issues / narratives (Punjab-anchored) ---
     "ਨਸ਼ਾ", "nasha drugs Punjab", "ਕਿਸਾਨ", "kisan Punjab",
     "Punjab naukri jobs", "Punjab bijli electricity",
 ]
@@ -133,8 +134,11 @@ SEARCH_TERMS = [
 # Pagination + cap. Maximum coverage ke liye deep pagination. Pehla refresh
 # slow hoga (hazaaron ads + Claude classify), par classifier cache karta hai to
 # baad ke refresh fast — sirf NAYI ads classify hoti hain. Sab env se tunable.
-MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "10"))  # 10*100 = ~1000/term
-MAX_TOTAL_ADS = int(os.environ.get("MAX_TOTAL_ADS", "8000"))           # dashboard/archive cap
+MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "6"))   # 6*100 = ~600/term
+MAX_TOTAL_ADS = int(os.environ.get("MAX_TOTAL_ADS", "4000"))           # dashboard/archive cap
+# Saare search terms/pages parallel fetch karne ke liye threads (warna bahut slow).
+# Zyada workers = fast par Meta rate-limit (#613) ka risk. 4 = achha balance.
+MAX_FETCH_WORKERS = int(os.environ.get("MAX_FETCH_WORKERS", "4"))
 
 # Search-term result ko party guess karne ke liye page_name keyword mapping.
 PARTY_NAME_HINTS = {
