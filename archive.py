@@ -197,6 +197,22 @@ def get_archive(status="all", days=None, party=None, stance=None, limit=800):
         return []
 
 
+def dashboard_ads(limit=None):
+    """
+    Archive se ads ko dashboard/aggregate ke shape mein lao — taaki jab live
+    Meta fetch fail/throttle ho (ya warm-up chal raha ho), demo ki jagah ye
+    REAL (pehle se classified) ads dikhaye ja saken. War-room hamesha asli data.
+    """
+    import config as _cfg
+    rows = get_archive(status="all", limit=limit or 5000)
+    for r in rows:
+        r["start"] = r.get("started", "") or ""
+        r["is_official"] = str(r.get("page_id") or "") in _cfg.PAGE_TO_PARTY
+        r["is_punjab"] = True
+        r.setdefault("plat", r.get("plat", []) or [])
+    return rows
+
+
 def spend_tracker():
     """
     Dono side ki estimated spend (archive se — permanent):

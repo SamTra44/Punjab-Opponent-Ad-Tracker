@@ -81,6 +81,31 @@ CACHE = {
 _CACHE_LOCK = threading.Lock()
 
 
+def _payload_from_archive(errors):
+    """
+    Live Meta data na ho to archive ke (pehle-se-classified) real ads se ek
+    dashboard payload banao — demo se behtar. None agar archive khali ho.
+    """
+    try:
+        ads = archive.dashboard_ads(config.MAX_TOTAL_ADS)
+    except Exception as e:
+        log.warning("archive fallback load failed: %s", e)
+        return None
+    if not ads:
+        return None
+    payload = {"mode": "archive", "count": len(ads), "ads": ads,
+               "errors": errors or []}
+    payload.update(meta_api._build_aggregates(ads))
+    payload["official_count"] = sum(1 for a in ads if a.get("is_official"))
+    payload["non_official_count"] = sum(1 for a in ads if not a.get("is_official"))
+    payload.update(classifier.build_ai_aggregates(ads))
+    try:
+        meta_api.assign_damage_levels(ads)
+    except Exception:
+        pass
+    return payload
+
+
 def refresh_cache():
     """Meta se fresh data laao aur CACHE update karo (thread-safe)."""
     log.info("Refreshing ad cache from Meta Ad Library...")
@@ -91,17 +116,26 @@ def refresh_cache():
         log.exception("refresh_cache failed: %s", e)
         return
 
-    # Claude se stance (against/support AAP) + narrative classify karwao.
-    # Sirf naye ads classify hote hain (cached), isliye yeh fast rehta hai.
-    try:
-        classifier.enrich_ads(payload.get("ads", []))
-        # Pro-AAP ad opponent party ki nahi ho sakti — proxy party fix karo.
-        meta_api.correct_proxy_party(payload.get("ads", []))
-        payload.update(classifier.build_ai_aggregates(payload.get("ads", [])))
-        # Damage Radar: stance ke baad anti-AAP ads ko threat-rank karo.
-        meta_api.assign_damage_levels(payload.get("ads", []))
-    except Exception as e:
-        log.warning("AI classification skipped: %s", e)
+    if payload.get("mode") == "live":
+        # Claude se stance (against/support AAP) + party + narrative classify.
+        # Sirf naye ads classify hote hain (cached), isliye yeh fast rehta hai.
+        try:
+            classifier.enrich_ads(payload.get("ads", []))
+            # Pro-AAP ad opponent party ki nahi ho sakti — proxy party fix karo.
+            meta_api.correct_proxy_party(payload.get("ads", []))
+            payload.update(classifier.build_ai_aggregates(payload.get("ads", [])))
+            # Damage Radar: stance ke baad anti-AAP ads ko threat-rank karo.
+            meta_api.assign_damage_levels(payload.get("ads", []))
+        except Exception as e:
+            log.warning("AI classification skipped: %s", e)
+    else:
+        # Live Meta fail/throttle (ya warm-up) — demo ki jagah archive ke REAL,
+        # pehle-se-classified ads dikhao. War-room hamesha asli data dikhe.
+        arch = _payload_from_archive(payload.get("errors", []))
+        if arch:
+            payload = arch
+            log.info("Live unavailable — serving %d ads from archive.",
+                     payload["count"])
 
     payload["updated_at"] = datetime.now(timezone.utc).isoformat()
     payload["ready"] = True  # pehli fetch complete -> frontend ko data dikhao
