@@ -470,10 +470,29 @@ def start_scheduler():
              config.REFRESH_HOURS)
 
 
+def _seed_cache_from_archive():
+    """
+    Boot pe TURANT archive ke real (pehle-se-classified) ads cache mein daal do,
+    taaki dashboard kabhi demo/khali na dikhe jab tak slow live refresh chal raha
+    ho. Live refresh complete hone pe yeh fresh data se replace ho jaata hai.
+    """
+    try:
+        arch = _payload_from_archive([])
+        if arch:
+            arch["updated_at"] = datetime.now(timezone.utc).isoformat()
+            arch["ready"] = True
+            with _CACHE_LOCK:
+                CACHE.update(arch)
+            log.info("Cache seeded from archive: %d real ads.", arch["count"])
+    except Exception as e:
+        log.warning("seed from archive failed: %s", e)
+
+
 # App startup pe ek baar warm-up fetch + scheduler chalao.
 # gunicorn ke under bhi yeh import-time pe chalega.
 def _bootstrap():
-    refresh_cache()
+    _seed_cache_from_archive()   # instant real data (demo se bacho)
+    refresh_cache()              # phir live Meta se update (jab data mile)
     start_scheduler()
 
 
