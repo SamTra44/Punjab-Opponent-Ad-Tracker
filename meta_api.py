@@ -8,6 +8,7 @@
 import logging
 import re
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -24,45 +25,77 @@ RATE_LIMIT_RETRIES = 3   # #613 rate-limit pe itni baar backoff-retry karo
 # =============================================================================
 # 1) LOW-LEVEL: ek API call (page_ids ya search_terms ke saath)
 # =============================================================================
+_token_lock = threading.Lock()
+_token_i = 0
+
+
+def _all_tokens():
+    toks = list(config.META_ACCESS_TOKENS or [])
+    if config.META_ACCESS_TOKEN and config.META_ACCESS_TOKEN not in toks:
+        toks.insert(0, config.META_ACCESS_TOKEN)
+    return toks
+
+
+def _next_token():
+    """
+    Round-robin token rotation. Multiple tokens (alag Meta apps se) ka matlab
+    har token ka apna rate-limit budget — to 6 tokens ~ 6x data bina #613 ke.
+    """
+    global _token_i
+    toks = _all_tokens()
+    if not toks:
+        return None
+    with _token_lock:
+        t = toks[_token_i % len(toks)]
+        _token_i += 1
+    return t
+
+
 def _call_ads_archive(search_page_ids=None, search_terms=None, max_pages=None):
     """
-    Meta ads_archive endpoint ko call karta hai, aur paging.next follow karke
-    multiple pages tak ads laata hai (zyada coverage ke liye).
+    Meta ads_archive endpoint ko call karta hai, after-cursor se paginate karta
+    hai, aur har request pe token rotate karta hai (rate-limit se bachne ke liye).
     Returns: (data_list, error_string). error None ho to success.
     """
-    if not config.META_ACCESS_TOKEN:
+    if not _all_tokens():
         return [], "META_ACCESS_TOKEN missing"
 
     if max_pages is None:
         max_pages = config.MAX_PAGES_PER_QUERY
 
-    params = {
-        "access_token": config.META_ACCESS_TOKEN,
+    base = {
         "ad_reached_countries": config.AD_REACHED_COUNTRIES,
         "ad_active_status": config.AD_ACTIVE_STATUS,
         "ad_type": config.AD_TYPE,
         "fields": config.AD_FIELDS,
         "limit": config.RESULT_LIMIT,
     }
+    if getattr(config, "AD_DELIVERY_DATE_MIN", ""):
+        # Purani (last year ki) ads bhi laao, sirf recent nahi.
+        base["ad_delivery_date_min"] = config.AD_DELIVERY_DATE_MIN
     if search_page_ids:
         # Meta expects a JSON-ish list string, e.g. ["123","456"]
         ids = ",".join(f'"{pid}"' for pid in search_page_ids)
-        params["search_page_ids"] = f"[{ids}]"
+        base["search_page_ids"] = f"[{ids}]"
     if search_terms:
-        params["search_terms"] = search_terms
+        base["search_terms"] = search_terms
 
     all_data = []
-    url = config.GRAPH_BASE_URL
-    use_params = params
+    after = None
     pages = 0
 
-    while url and pages < max_pages:
-        # Rate limit (#613) aaye to thoda ruk ke dobara try karo (backoff).
+    while pages < max_pages:
+        params = dict(base)
+        if after:
+            params["after"] = after  # token-independent cursor -> har page naya token
+
         payload = None
         delay = 6
         for attempt in range(RATE_LIMIT_RETRIES + 1):
+            params["access_token"] = _next_token()  # har try pe agla token
             try:
-                resp = requests.get(url, params=use_params, timeout=REQUEST_TIMEOUT)
+                resp = requests.get(config.GRAPH_BASE_URL, params=params,
+                                    timeout=REQUEST_TIMEOUT)
                 payload = resp.json()
             except requests.exceptions.RequestException as e:
                 log.warning("Meta API network error: %s", e)
@@ -75,7 +108,7 @@ def _call_ads_archive(search_page_ids=None, search_terms=None, max_pages=None):
             if err_obj and (err_obj.get("code") == 613
                             or "rate limit" in err_obj.get("message", "").lower()):
                 if attempt < RATE_LIMIT_RETRIES:
-                    time.sleep(delay)
+                    time.sleep(delay)       # + agla token (upar rotate hota hai)
                     delay *= 2
                     continue
             break  # success ya non-rate-limit error -> aage badho
@@ -90,9 +123,10 @@ def _call_ads_archive(search_page_ids=None, search_terms=None, max_pages=None):
         all_data.extend(batch)
         pages += 1
 
-        # Agli page ka URL (already poora token+params ke saath aata hai).
-        url = (payload.get("paging", {}) or {}).get("next")
-        use_params = None  # next URL mein sab kuch already hota hai
+        # Agli page ka cursor (token ke bina) — taaki naya token use ho sake.
+        after = (((payload.get("paging") or {}).get("cursors") or {}).get("after"))
+        if not after or not batch:
+            break
 
     return all_data, None
 
