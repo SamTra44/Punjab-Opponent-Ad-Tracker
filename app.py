@@ -7,9 +7,10 @@
 # Production:   gunicorn app:app   (Railway Procfile)
 # -----------------------------------------------------------------------------
 
+import os
 import logging
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 # IMPORTANT: .env ko config import se PEHLE load karo, taaki local dev mein
@@ -40,6 +41,14 @@ log = logging.getLogger("app")
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+# Login ko lambe time tak yaad rakho — browser band/reopen ya server restart ke
+# baad bhi dobara id/password na maange (default 30 din, env se badal sakte ho).
+app.permanent_session_lifetime = timedelta(
+    days=int(os.environ.get("SESSION_DAYS", "30")))
+app.config.update(
+    SESSION_REFRESH_EACH_REQUEST=True,   # har visit pe expiry aage badh jaaye
+    SESSION_COOKIE_SAMESITE="Lax",
+)
 
 
 @app.after_request
@@ -138,6 +147,7 @@ def login():
         user = request.form.get("username", "")
         pw = request.form.get("password", "")
         if user == config.ADMIN_USER and pw == config.ADMIN_PASS:
+            session.permanent = True   # cookie ko 30 din tak zinda rakho
             session["logged_in"] = True
             session["user"] = user
             nxt = request.args.get("next") or url_for("dashboard")
