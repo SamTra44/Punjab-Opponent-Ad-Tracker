@@ -15,9 +15,11 @@ GRAPH_BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}/ads_archive"
 # Sirf India ke ads (Punjab specifically API se filter nahi hota, isliye
 # region-level filtering normalize step + frontend region chips se hoti hai).
 AD_REACHED_COUNTRIES = '["IN"]'
-AD_ACTIVE_STATUS = "ACTIVE"
+# ALL = active + band ho chuki (stopped) dono. Maximum coverage ke liye default
+# ALL; env se "ACTIVE" karke sirf live ads bhi le sakte ho.
+AD_ACTIVE_STATUS = os.environ.get("AD_ACTIVE_STATUS", "ALL")
 AD_TYPE = "POLITICAL_AND_ISSUE_ADS"
-RESULT_LIMIT = int(os.environ.get("META_RESULT_LIMIT", "50"))
+RESULT_LIMIT = int(os.environ.get("META_RESULT_LIMIT", "100"))
 
 # Kaunse fields chahiye Meta se (spec ke according).
 AD_FIELDS = ",".join([
@@ -102,20 +104,37 @@ FETCH_ALL_POLITICAL = os.environ.get("FETCH_ALL_POLITICAL", "1") not in ("0", "f
 
 # Punjab ke political ads pakadne ke liye broad keywords (English + Gurmukhi).
 # "ਪੰਜਾਬ" (Punjab) wide net daalta hai; baaki party/leader specific.
+# Broad sweep terms — maqsad: keyword pe depend kiye bina HAR Punjab political ad
+# capture ho jaaye. Wide nets (Punjab/sarkar in 3 scripts) + leaders + districts +
+# issues. Overlap chalega — baad mein ad-id se dedup ho jaata hai. Claude phir har
+# ad ko khud padh ke stance/party classify karta hai.
 SEARCH_TERMS = [
-    "ਪੰਜਾਬ",            # Punjab (Gurmukhi) — sabse wide net
-    "Punjab",
-    "Bhagwant Mann",
-    "Punjab Congress",
-    "Shiromani Akali Dal",
-    "BJP Punjab",
-    "Aam Aadmi Party Punjab",
+    # --- widest nets (3 scripts) ---
+    "ਪੰਜਾਬ", "Punjab", "पंजाब",
+    "ਸਰਕਾਰ", "ਵੋਟ", "ਚੋਣ", "ਲੋਕ",            # govt / vote / election / people
+    "Punjab government", "Punjab election",
+    # --- parties ---
+    "Aam Aadmi Party", "ਆਮ ਆਦਮੀ ਪਾਰਟੀ", "AAP Punjab",
+    "BJP Punjab", "ਭਾਜਪਾ", "Bharatiya Janata Party",
+    "Punjab Congress", "ਕਾਂਗਰਸ", "कांग्रेस",
+    "Shiromani Akali Dal", "ਅਕਾਲੀ ਦਲ", "अकाली दल",
+    # --- leaders ---
+    "Bhagwant Mann", "ਭਗਵੰਤ ਮਾਨ", "Arvind Kejriwal", "ਕੇਜਰੀਵਾਲ",
+    "Sukhbir Badal", "Sunil Jakhar", "Amarinder Singh",
+    "Partap Singh Bajwa", "Ravneet Bittu", "Raja Warring", "Charanjit Channi",
+    # --- districts (Punjab-wide reach) ---
+    "Amritsar", "Ludhiana", "Jalandhar", "Patiala", "Bathinda",
+    "Mohali", "Hoshiarpur", "Ferozepur", "Sangrur", "Gurdaspur",
+    # --- issues / narratives ---
+    "ਨਸ਼ਾ", "nasha drugs Punjab", "ਕਿਸਾਨ", "kisan Punjab",
+    "Punjab naukri jobs", "Punjab bijli electricity",
 ]
 
-# Pagination + cap (taaki dashboard fast rahe aur API rate limit na ho).
-# Pages kam = fast warm-up. 2 pages bhi ~100+ ads laata hai.
-MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "2"))   # 2*50 = 100/term
-MAX_TOTAL_ADS = int(os.environ.get("MAX_TOTAL_ADS", "300"))            # dashboard cap
+# Pagination + cap. Maximum coverage ke liye deep pagination. Pehla refresh
+# slow hoga (hazaaron ads + Claude classify), par classifier cache karta hai to
+# baad ke refresh fast — sirf NAYI ads classify hoti hain. Sab env se tunable.
+MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "10"))  # 10*100 = ~1000/term
+MAX_TOTAL_ADS = int(os.environ.get("MAX_TOTAL_ADS", "8000"))           # dashboard/archive cap
 
 # Search-term result ko party guess karne ke liye page_name keyword mapping.
 PARTY_NAME_HINTS = {
