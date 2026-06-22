@@ -332,7 +332,12 @@ def normalize_ad(raw):
         "plat": raw.get("publisher_platforms", []) or [],
         "start": raw.get("ad_delivery_start_time", ""),
         "stop": raw.get("ad_delivery_stop_time", ""),
-        "snapshot_url": raw.get("ad_snapshot_url", ""),
+        # PUBLIC Ad Library permalink (id se). Meta ka 'ad_snapshot_url' ek
+        # render_ad URL hai jisme access_token embedded hota hai — woh browser
+        # mein "content not available" deta hai AUR token leak karta hai. Isliye
+        # hamesha clean public library link banao.
+        "snapshot_url": ("https://www.facebook.com/ads/library/?id="
+                         + str(raw.get("id", ""))),
         "theme": _detect_theme(text),
     }
 
