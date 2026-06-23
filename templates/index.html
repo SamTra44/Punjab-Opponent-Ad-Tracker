@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Page khud dark-theme hai: browser ka "force/auto dark mode" ise aur
+       invert na kare (warna text dark-on-dark ho ke padhne layak nahi rehta). -->
+  <meta name="color-scheme" content="dark" />
   <title>Narrative Intelligence · AAP Punjab</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <style>
     /* ===================== THEME ===================== */
     :root{
+      color-scheme: dark;   /* browser ko batao: page already dark hai, mat invert karo */
       --bg:#070a0f; --panel:#0f151d; --panel2:#131b25; --line:#1e2a38;
       --txt:#e6edf3; --muted:#8b98a8; --accent:#00e5a0; --accent2:#2f81f7;
       --danger:#ff5d6c; --warn:#ffb454;
