@@ -78,11 +78,20 @@ CREATE TABLE IF NOT EXISTS ads_archive (
     narrative TEXT, narrative_summary TEXT, theme TEXT,
     spend TEXT, impr TEXT, spend_mid REAL, impr_mid REAL,
     regions TEXT, platforms TEXT, audience TEXT,
-    damage_level TEXT, started TEXT, snapshot_url TEXT, text TEXT,
+    damage_level TEXT, started TEXT, stop TEXT, snapshot_url TEXT, text TEXT,
     first_seen TEXT, last_seen TEXT,
     active INTEGER DEFAULT 1, stopped_at TEXT
 )
 """
+
+
+def _migrate():
+    """Purane archive (jisme 'stop' column nahi) ke liye column add karo."""
+    try:
+        _write([("ALTER TABLE ads_archive ADD COLUMN stop TEXT", ())])
+        log.info("archive: added 'stop' (end date) column")
+    except Exception:
+        pass  # column already hai — sab theek
 
 
 def _init():
@@ -92,6 +101,7 @@ def _init():
         ("CREATE INDEX IF NOT EXISTS idx_lastseen ON ads_archive(last_seen)", ()),
         ("CREATE INDEX IF NOT EXISTS idx_firstseen ON ads_archive(first_seen)", ()),
     ])
+    _migrate()
 
 
 try:
@@ -103,7 +113,7 @@ except Exception as e:  # pragma: no cover
 
 _COLS = ("id,page,page_id,handle,party,source,stance,narrative,"
          "narrative_summary,theme,spend,impr,spend_mid,impr_mid,regions,"
-         "platforms,audience,damage_level,started,snapshot_url,text,"
+         "platforms,audience,damage_level,started,stop,snapshot_url,text,"
          "first_seen,last_seen")
 
 
@@ -116,8 +126,8 @@ def _row_from_ad(a, seen):
         float(a.get("spend_mid", 0) or 0), float(a.get("impr_mid", 0) or 0),
         ", ".join(a.get("regions", []) or []), ", ".join(a.get("plat", []) or []),
         json.dumps(a.get("audience")) if a.get("audience") else "",
-        a.get("damage_level") or "", a.get("start", ""), a.get("snapshot_url", ""),
-        a.get("text", ""), seen, seen,
+        a.get("damage_level") or "", a.get("start", ""), a.get("stop", ""),
+        a.get("snapshot_url", ""), a.get("text", ""), seen, seen,
     )
 
 
@@ -129,7 +139,7 @@ def record_ads(ads, mode="live"):
     if mode != "live" or not ads:
         return
     seen = _now()
-    placeholders = ",".join([PH] * 23)
+    placeholders = ",".join([PH] * 24)
     insert_q = (
         "INSERT INTO ads_archive (%s, active, stopped_at) "
         "VALUES (%s, 1, NULL) "
@@ -141,7 +151,8 @@ def record_ads(ads, mode="live"):
         "spend=excluded.spend, impr=excluded.impr, "
         "spend_mid=excluded.spend_mid, impr_mid=excluded.impr_mid, "
         "damage_level=excluded.damage_level, audience=excluded.audience, "
-        "regions=excluded.regions, platforms=excluded.platforms"
+        "regions=excluded.regions, platforms=excluded.platforms, "
+        "started=excluded.started, stop=excluded.stop"
         % (_COLS, placeholders)
     )
     stop_q = ("UPDATE ads_archive SET active=0, stopped_at=%s "

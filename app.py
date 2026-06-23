@@ -376,10 +376,10 @@ def _build_ads_xlsx(ads, fname, include_archive_cols=False):
         "Facebook Page", "Facebook Page URL", "Page ID", "Handle", "Party",
         "Source", "Stance", "Damage Level", "Narrative", "AI Summary",
         "Spend (range)", "Impressions (range)", "Audience", "Regions",
-        "Platforms", "Started", "Theme (keyword)", "Ad Text",
+        "Platforms", "Started", "Ended", "Theme (keyword)", "Ad Text",
         "View Ad on Meta (link)", "Ad ID",
     ]
-    widths = [26, 40, 16, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 18, 60, 40, 18]
+    widths = [26, 40, 16, 16, 8, 14, 12, 12, 22, 34, 20, 20, 22, 26, 18, 12, 14, 18, 60, 40, 18]
     if include_archive_cols:
         headers += ["Status", "First Seen", "Last Seen", "Stopped At"]
         widths += [12, 17, 17, 17]
@@ -407,6 +407,7 @@ def _build_ads_xlsx(ads, fname, include_archive_cols=False):
             aud_str, ", ".join(a.get("regions", []) or []),
             ", ".join(a.get("plat", []) or []),
             a.get("start", "") or a.get("started", ""),
+            a.get("stop", "") or "Running",
             a.get("theme", ""), a.get("text", ""), a.get("snapshot_url", ""),
             a.get("id", ""),
         ]

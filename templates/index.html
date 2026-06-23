@@ -986,6 +986,7 @@
           '<div><div class="lbl">Spend (range)</div><div class="val">'+esc(a.spend)+'</div></div>'+
           '<div><div class="lbl">Impressions</div><div class="val">'+esc(a.impr)+'</div></div>'+
           '<div><div class="lbl">Started</div><div class="val">'+esc(a.start||"—")+'</div></div>'+
+          '<div><div class="lbl">Ended</div><div class="val">'+(a.stop?esc(a.stop):'<span style="color:var(--accent)">🟢 Chal rahi</span>')+'</div></div>'+
           '<div><div class="lbl">Platforms</div><div class="pills">'+(plats||'<span class="mini">—</span>')+'</div></div>'+
         '</div>'+
         (regs?'<div class="pills">'+regs+'</div>':'')+
