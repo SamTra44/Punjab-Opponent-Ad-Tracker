@@ -251,12 +251,21 @@ def spend_tracker():
                        "COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
                        "FROM ads_archive WHERE stance=" + PH + " "
                        "GROUP BY substr(first_seen,1,10) ORDER BY day", (stance,))
+        # Top 10 spender PAGES is side pe (kis page ne sabse zyada lagaya).
+        tp = _query("SELECT page, MIN(handle) AS handle, MIN(party) AS party, "
+                    "COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
+                    "FROM ads_archive WHERE stance=" + PH + " AND page<>'' "
+                    "GROUP BY page ORDER BY s DESC LIMIT 10", (stance,))
         return {
             "total": round(total), "active_spend": round(active), "ads": n,
             "by_party": [{"party": r["party"] or "OTHER", "spend": round(num(r["s"])),
                           "count": r["c"]} for r in bp],
             "daily": [{"day": r["day"], "spend": round(num(r["s"])),
                        "count": r["c"]} for r in daily if r["day"]],
+            "top_pages": [{"page": r["page"], "handle": r["handle"] or "",
+                           "party": r["party"] or "OTHER",
+                           "spend": round(num(r["s"])), "count": r["c"]}
+                          for r in tp],
         }
 
     try:

@@ -1334,6 +1334,20 @@
           '<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:'+c+'"></div></div></div>';
       }).join("");
     }
+    function spendTopPages(list, color){
+      if(!list||!list.length) return '<div class="muted" style="font-size:12px">Koi data nahi</div>';
+      return list.map((p,i)=>{
+        const c=PARTY_COL2[p.party]||PARTY_COL2.OTHER;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">'+
+          '<span style="font-weight:800;font-size:13px;color:'+color+';min-width:20px;text-align:center">'+(i+1)+'</span>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.page)+'</div>'+
+            '<div class="muted" style="font-size:10.5px">'+(p.handle?esc(p.handle)+' · ':'')+
+              '<span style="color:'+c+'">'+esc(PARTY_LABEL[p.party]||p.party)+'</span> · '+p.count+' ads</div>'+
+          '</div>'+
+          '<b style="font-size:13px;white-space:nowrap">'+inr(p.spend)+'</b></div>';
+      }).join('');
+    }
     function loadSpend(){
       const box=document.getElementById("spendBody");
       box.innerHTML='<div class="spinner"><div class="ring"></div><div class="muted">Calculate ho raha…</div></div>';
@@ -1351,6 +1365,8 @@
           '</div>';
         h+='<h4 style="color:var(--danger)">⚔️ Against AAP — kis party ne kitna lagaya</h4>'+spendPartyBars(ag.by_party);
         h+='<h4 style="color:var(--sad)">🤝 Pro-AAP support — kahan se aa raha</h4>'+spendPartyBars(su.by_party);
+        h+='<h4 style="color:var(--danger)">🏆 Top 10 spender pages — Against AAP</h4>'+spendTopPages(ag.top_pages||[], "var(--danger)");
+        h+='<h4 style="color:var(--sad)">🏆 Top 10 spender pages — Pro-AAP</h4>'+spendTopPages(su.top_pages||[], "var(--sad)");
         h+='<h4>📈 Daily spend — Against (laal) vs Support (hara)</h4>'+
           '<canvas id="spendDaily"></canvas>'+
           '<div class="note">📌 Spend Meta ke range ka estimate (midpoint). Archive permanent hai — data kabhi nahi mitega, roz auto-update.</div>';
