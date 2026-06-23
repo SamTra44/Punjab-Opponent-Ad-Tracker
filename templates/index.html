@@ -57,6 +57,11 @@
       border-bottom:1px solid rgba(255,180,84,.4);color:var(--warn);
       padding:8px 22px;font-size:12.5px;text-align:center;font-weight:600}
     #demoBanner.show{display:block}
+    /* Side notice pill — token expire / Meta issue pe dikhta hai (data safe rehta) */
+    #noticePill{display:none;align-items:center;gap:6px;background:rgba(255,180,84,.14);
+      border:1px solid rgba(255,180,84,.5);color:#ffb454;font-size:11.5px;font-weight:700;
+      padding:5px 12px;border-radius:20px;max-width:420px;line-height:1.3}
+    #noticePill.show{display:inline-flex}
 
     /* ===================== STAT STRIP ===================== */
     .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;
@@ -427,6 +432,7 @@
       <div class="s">AAP Punjab · Soch se pehle, jeet ki taiyaari</div>
     </div>
     <div id="liveInd" class="live"><span class="dot"></span><span id="liveText">Live Monitoring</span></div>
+    <div id="noticePill"></div>
     <div class="clock">
       <div id="clockTime">--:--:--</div>
       <div class="d" id="clockDate">—</div>
@@ -758,6 +764,16 @@
         banner.classList.remove("show");
         ind.classList.remove("demo-pill");
         txt.textContent = "Live Monitoring";
+      }
+      // Side notice — token expire / Meta issue pe (data safe, bas live update ruka)
+      const np = document.getElementById("noticePill");
+      if(data.notice){
+        np.classList.add("show");
+        np.innerHTML = "⚠️ " + esc(data.notice);
+        if(data.mode !== "demo"){ txt.textContent = "Saved Data"; ind.classList.add("demo-pill"); }
+      }else{
+        np.classList.remove("show");
+        np.innerHTML = "";
       }
     }
 

@@ -95,6 +95,19 @@ def _payload_from_archive(errors):
         return None
     payload = {"mode": "archive", "count": len(ads), "ads": ads,
                "errors": errors or []}
+    # UI notice — kyun saved data dikha rahe hain (token expire / Meta issue).
+    # Warm-up seed (errors khaali) pe koi notice nahi.
+    joined = " ".join(errors or []).lower()
+    if any(k in joined for k in ("expire", "validating access token",
+                                 "session has expired", "access token")):
+        payload["notice"] = ("Token expire/invalid ho gaya — purana saved data "
+                             "dikhaya ja raha hai (sab data safe).")
+    elif "permission" in joined:
+        payload["notice"] = ("Meta token ko Ad Library permission nahi — saved "
+                             "data dikhaya ja raha hai (sab data safe).")
+    elif errors:
+        payload["notice"] = ("Meta abhi unavailable — purana saved data dikhaya "
+                             "ja raha hai (sab data safe).")
     payload.update(meta_api._build_aggregates(ads))
     payload["official_count"] = sum(1 for a in ads if a.get("is_official"))
     payload["non_official_count"] = sum(1 for a in ads if not a.get("is_official"))
