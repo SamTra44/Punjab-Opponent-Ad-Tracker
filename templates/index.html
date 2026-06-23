@@ -937,7 +937,9 @@
     }
 
     // ===================== RENDER CARDS =====================
-    function render(){
+    const PAGE_SIZE = 60;   // ek baar mein itne cards (warna 10k cards = browser hang)
+    function loadMore(){ STATE.shown = (STATE.shown||PAGE_SIZE) + PAGE_SIZE; render(true); }
+    function render(append){
       if(!STATE.data) return;
       const q = (document.getElementById("searchBox").value||"").toLowerCase();
       let ads = STATE.data.ads||[];
@@ -959,7 +961,21 @@
         grid.innerHTML = '<div class="empty">😶 In filters ke liye koi ad nahi mila.</div>';
         return;
       }
-      grid.innerHTML = ads.map(adCard).join("");
+      // Sirf utne hi cards render karo jitne chahiye — warna 10k cards browser
+      // ko hang kar dete hain. Baaki "Aur dikhao" se load hote hain.
+      if(!append) STATE.shown = PAGE_SIZE;       // naya filter/search -> reset
+      const total = ads.length;
+      const shown = Math.min(STATE.shown || PAGE_SIZE, total);
+      let html = ads.slice(0, shown).map(adCard).join("");
+      if(shown < total){
+        html += '<div style="grid-column:1/-1;text-align:center;padding:12px 0">'+
+          '<button class="topbtn" onclick="loadMore()" style="padding:11px 26px;font-size:13px;border-color:var(--accent);color:var(--accent)">'+
+          '⬇️ Aur '+Math.min(PAGE_SIZE,total-shown)+' ads dikhao'+
+          ' &nbsp;·&nbsp; <span style="color:var(--muted)">'+shown+' / '+total+'</span></button></div>';
+      }else{
+        html += '<div style="grid-column:1/-1;text-align:center;padding:10px 0;font-size:11.5px;color:var(--muted)">— saari '+total+' ads dikh gayi —</div>';
+      }
+      grid.innerHTML = html;
     }
 
     function adCard(a){
