@@ -256,6 +256,20 @@ def spend_tracker():
                     "COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
                     "FROM ads_archive WHERE stance=" + PH + " AND page<>'' "
                     "GROUP BY page ORDER BY s DESC LIMIT 10", (stance,))
+        # Period-wise spend: ads jo us period mein SHURU hui unka total spend.
+        today = datetime.now(timezone.utc).date()
+
+        def period(since):
+            r = _query("SELECT COALESCE(SUM(spend_mid),0) AS s, COUNT(*) AS c "
+                       "FROM ads_archive WHERE stance=" + PH +
+                       " AND substr(started,1,10)>=" + PH, (stance, since))[0]
+            return {"spend": round(num(r["s"])), "count": r["c"]}
+        periods = {
+            "today": period(today.isoformat()),
+            "week": period((today - timedelta(days=7)).isoformat()),
+            "month": period((today - timedelta(days=30)).isoformat()),
+            "year": period((today - timedelta(days=365)).isoformat()),
+        }
         return {
             "total": round(total), "active_spend": round(active), "ads": n,
             "by_party": [{"party": r["party"] or "OTHER", "spend": round(num(r["s"])),
@@ -266,6 +280,7 @@ def spend_tracker():
                            "party": r["party"] or "OTHER",
                            "spend": round(num(r["s"])), "count": r["c"]}
                           for r in tp],
+            "periods": periods,
         }
 
     try:

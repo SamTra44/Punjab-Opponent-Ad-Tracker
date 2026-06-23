@@ -1350,6 +1350,23 @@
           '<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:'+c+'"></div></div></div>';
       }).join("");
     }
+    function spendPeriods(ag, su){
+      const ap=ag.periods||{}, sp=su.periods||{};
+      const rows=[['🟢 Aaj','today'],['📅 7 din','week'],['🗓️ 30 din','month'],['📆 1 saal','year']];
+      let h='<table style="width:100%;border-collapse:collapse;font-size:12.5px">'+
+        '<tr style="color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px">'+
+          '<td style="padding:6px 4px">Period</td>'+
+          '<td style="padding:6px 4px;text-align:right;color:var(--danger)">⚔️ Against</td>'+
+          '<td style="padding:6px 4px;text-align:right;color:var(--sad)">🤝 Support</td></tr>';
+      rows.forEach(function(r){
+        const a=ap[r[1]]||{spend:0,count:0}, s=sp[r[1]]||{spend:0,count:0};
+        h+='<tr style="border-top:1px solid var(--line)">'+
+          '<td style="padding:8px 4px;font-weight:600">'+r[0]+'</td>'+
+          '<td style="padding:8px 4px;text-align:right"><b>'+inr(a.spend)+'</b> <span class="muted" style="font-size:10px">('+a.count+')</span></td>'+
+          '<td style="padding:8px 4px;text-align:right"><b>'+inr(s.spend)+'</b> <span class="muted" style="font-size:10px">('+s.count+')</span></td></tr>';
+      });
+      return h+'</table><div class="note" style="margin-top:6px">📌 Ad ke <b>start date</b> ke hisaab se — yaani us period mein <b>shuru hui</b> ads ka total spend (nested: 1 saal mein 30 din + 7 din + aaj sab shaamil).</div>';
+    }
     function spendTopPages(list, color){
       if(!list||!list.length) return '<div class="muted" style="font-size:12px">Koi data nahi</div>';
       return list.map((p,i)=>{
@@ -1379,6 +1396,7 @@
             '<div class="v">'+inr(su.total)+'</div>'+
             '<div class="sub">'+(su.ads||0)+' pro-AAP ads · active '+inr(su.active_spend)+'</div></div>'+
           '</div>';
+        h+='<h4>📅 Spend timeline — kis period mein nayi ads aur kharch</h4>'+spendPeriods(ag,su);
         h+='<h4 style="color:var(--danger)">⚔️ Against AAP — kis party ne kitna lagaya</h4>'+spendPartyBars(ag.by_party);
         h+='<h4 style="color:var(--sad)">🤝 Pro-AAP support — kahan se aa raha</h4>'+spendPartyBars(su.by_party);
         h+='<h4 style="color:var(--danger)">🏆 Top 10 spender pages — Against AAP</h4>'+spendTopPages(ag.top_pages||[], "var(--danger)");
