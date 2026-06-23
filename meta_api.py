@@ -105,13 +105,21 @@ def _call_ads_archive(search_page_ids=None, search_terms=None, max_pages=None):
                 return all_data, f"bad response: {e}"
 
             err_obj = payload.get("error") if isinstance(payload, dict) else None
-            if err_obj and (err_obj.get("code") == 613
-                            or "rate limit" in err_obj.get("message", "").lower()):
-                if attempt < RATE_LIMIT_RETRIES:
-                    time.sleep(delay)       # + agla token (upar rotate hota hai)
+            if err_obj and attempt < RATE_LIMIT_RETRIES:
+                msg = (err_obj.get("message") or "").lower()
+                code = err_obj.get("code")
+                if code == 613 or "rate limit" in msg:
+                    time.sleep(delay)       # rate limit: ruk ke + agla token
                     delay *= 2
                     continue
-            break  # success ya non-rate-limit error -> aage badho
+                # Dead/galat token (expire/invalid/permission) -> turant AGLA
+                # token try karo. Isse ek token mar jaye to baaki valid tokens se
+                # kaam chalta rahe (mixed tokens safe).
+                if (code in (190, 102, 10, 200, 463, 467)
+                        or "access token" in msg or "expire" in msg
+                        or "session has expired" in msg or "permission" in msg):
+                    continue
+            break  # success ya aur koi error -> aage badho
 
         # Meta error object aaya?
         if isinstance(payload, dict) and "error" in payload:
