@@ -629,6 +629,16 @@
           <span class="muted" style="font-size:11px">← baaki states dropdown mein</span>
         </div>
         <div class="frow">
+          <span class="flabel">Date</span>
+          <div class="chip active" data-date="all" onclick="setDate(this)">All</div>
+          <div class="chip" data-date="today" onclick="setDate(this)">🟢 Aaj chal rahi</div>
+          <div class="chip" data-date="started_today" onclick="setDate(this)">Aaj shuru hui</div>
+          <div class="chip" data-date="7d" onclick="setDate(this)">7 din</div>
+          <div class="chip" data-date="30d" onclick="setDate(this)">30 din</div>
+          <input type="date" class="search" id="datePick" title="Kisi date pe chal rahi ads"
+                 style="max-width:170px;cursor:pointer" onchange="setDatePick(this.value)" />
+        </div>
+        <div class="frow">
           <span class="flabel">Search</span>
           <input class="search" id="searchBox" placeholder="Search ad text, page, theme..."
                  oninput="render()" />
@@ -665,7 +675,8 @@
   <script>
     // ===================== STATE =====================
     const REFRESH_HOURS = {{ refresh_hours }};
-    let STATE = { data:null, party:"ALL", region:"PUNJAB", source:"ALL", stance:"ALL" };
+    let STATE = { data:null, party:"ALL", region:"PUNJAB", source:"ALL", stance:"ALL",
+                  date:"all", dateVal:"" };
     const TRANSLATIONS = {};  // ad_id -> hindi text
     const TRANSLATING = {};   // ad_id -> bool (loading)
 
@@ -925,6 +936,24 @@
     function setRegionSel(val){
       STATE.region = val; render();
     }
+    // ----- Date filter -----
+    function _today(){ return new Date().toISOString().slice(0,10); }
+    function _daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+    function setDate(el){
+      document.querySelectorAll('[data-date]').forEach(c=>c.classList.remove("active"));
+      el.classList.add("active");
+      STATE.date = el.dataset.date; STATE.dateVal = "";
+      const dp=document.getElementById("datePick"); if(dp) dp.value="";
+      render();
+    }
+    function setDatePick(val){
+      STATE.dateVal = val;
+      if(val){ STATE.date = "pick";
+        document.querySelectorAll('[data-date]').forEach(c=>c.classList.remove("active")); }
+      else { STATE.date = "all";
+        const a=document.querySelector('[data-date="all"]'); if(a)a.classList.add("active"); }
+      render();
+    }
     function setSource(el){
       document.querySelectorAll('[data-source]').forEach(c=>c.classList.remove("active"));
       el.classList.add("active");
@@ -951,6 +980,13 @@
       // warna exact state match.
       if(STATE.region==="PUNJAB") ads = ads.filter(a=>(a.regions||[]).some(r=>/punjab/i.test(r)));
       else if(STATE.region!=="ALL") ads = ads.filter(a=>(a.regions||[]).includes(STATE.region));
+      // Date filter (ad ke start/end date se). "running on D" = start<=D aur (stop khaali ya stop>=D).
+      const runningOn = (a, d) => (a.start||"").slice(0,10) <= d && (!a.stop || a.stop.slice(0,10) >= d);
+      if(STATE.date==="today") ads = ads.filter(a=>runningOn(a, _today()));
+      else if(STATE.date==="started_today") ads = ads.filter(a=>(a.start||"").slice(0,10)===_today());
+      else if(STATE.date==="7d") ads = ads.filter(a=>(a.start||"").slice(0,10) >= _daysAgo(7));
+      else if(STATE.date==="30d") ads = ads.filter(a=>(a.start||"").slice(0,10) >= _daysAgo(30));
+      else if(STATE.date==="pick" && STATE.dateVal) ads = ads.filter(a=>runningOn(a, STATE.dateVal));
       if(q) ads = ads.filter(a=>
         (a.text||"").toLowerCase().includes(q) ||
         (a.page||"").toLowerCase().includes(q) ||
