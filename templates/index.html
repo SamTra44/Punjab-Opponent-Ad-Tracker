@@ -645,6 +645,8 @@
         </div>
       </div>
 
+      <div id="gridCount" style="margin:4px 2px 10px;font-size:13px;font-weight:700;
+           color:var(--accent)"></div>
       <div class="grid" id="adGrid">
         <div class="spinner"><div class="ring"></div>
           <div class="muted">Fetching latest opponent ads...</div></div>
@@ -939,6 +941,11 @@
     // ----- Date filter -----
     function _today(){ return new Date().toISOString().slice(0,10); }
     function _daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+    function _dateLabel(){
+      const m={today:"Aaj chal rahi",started_today:"Aaj shuru hui","7d":"Last 7 din","30d":"Last 30 din"};
+      if(STATE.date==="pick"&&STATE.dateVal) return STATE.dateVal+" ko chal rahi";
+      return m[STATE.date]||"";
+    }
     function setDate(el){
       document.querySelectorAll('[data-date]').forEach(c=>c.classList.remove("active"));
       el.classList.add("active");
@@ -992,6 +999,18 @@
         (a.page||"").toLowerCase().includes(q) ||
         (a.theme||"").toLowerCase().includes(q));
 
+      const total = ads.length;
+      // Live filtered count — top "Total Ads" stat + results indicator turant update.
+      const sT=document.getElementById("sTotal");
+      if(sT) sT.textContent = total.toLocaleString("en-IN");
+      const gc=document.getElementById("gridCount");
+      if(gc){
+        const dl=_dateLabel();
+        const anyFilter=(STATE.party!=="ALL"||STATE.source!=="ALL"||STATE.stance!=="ALL"||
+                         STATE.date!=="all"||!!q);
+        gc.textContent="📋 "+total.toLocaleString("en-IN")+" ads"+(dl?" — "+dl:"")+
+                       (anyFilter?"   (filtered)":"");
+      }
       const grid = document.getElementById("adGrid");
       if(!ads.length){
         grid.innerHTML = '<div class="empty">😶 In filters ke liye koi ad nahi mila.</div>';
@@ -1000,7 +1019,6 @@
       // Sirf utne hi cards render karo jitne chahiye — warna 10k cards browser
       // ko hang kar dete hain. Baaki "Aur dikhao" se load hote hain.
       if(!append) STATE.shown = PAGE_SIZE;       // naya filter/search -> reset
-      const total = ads.length;
       const shown = Math.min(STATE.shown || PAGE_SIZE, total);
       let html = ads.slice(0, shown).map(adCard).join("");
       if(shown < total){
