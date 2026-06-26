@@ -161,6 +161,8 @@ def generate_forecast(history, ads):
             output_config={"format": {"type": "json_schema",
                                       "schema": _FORECAST_SCHEMA}},
         )
+        import usage
+        usage.record_resp(config.STRATEGY_MODEL, resp, "forecast")
         text = next((b.text for b in resp.content if b.type == "text"), "{}")
         data = json.loads(text)
         data["available"] = True

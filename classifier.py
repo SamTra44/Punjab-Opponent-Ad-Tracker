@@ -21,6 +21,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import config
+import usage
 
 log = logging.getLogger("classifier")
 
@@ -173,6 +174,7 @@ def _classify_batch(batch):
             messages=[{"role": "user", "content": user_msg}],
             output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
         )
+        usage.record_resp(config.CLASSIFY_MODEL, resp, "classification")
         # output_config format guarantee karta hai ki pehla text block valid JSON ho.
         text = next((b.text for b in resp.content if b.type == "text"), "{}")
         data = json.loads(text)
@@ -271,6 +273,7 @@ def translate_to_hindi(ad_id, text):
             system=_TRANSLATE_SYSTEM,
             messages=[{"role": "user", "content": text[:1500]}],
         )
+        usage.record_resp(config.CLASSIFY_MODEL, resp, "translate")
         out = next((b.text for b in resp.content if b.type == "text"), "").strip()
     except Exception as e:
         log.warning("translate failed: %s", e)
@@ -317,6 +320,7 @@ def generate_counter(ad_id, text, narrative="", audience_str=""):
             system=_COUNTER_SYSTEM,
             messages=[{"role": "user", "content": user}],
         )
+        usage.record_resp(config.CLASSIFY_MODEL, resp, "counter")
         out = next((b.text for b in resp.content if b.type == "text"), "").strip()
     except Exception as e:
         log.warning("counter gen failed: %s", e)
@@ -378,6 +382,7 @@ def generate_creative(narrative, audience_str="", attack_text=""):
             output_config={"format": {"type": "json_schema",
                                       "schema": _CREATIVE_SCHEMA}},
         )
+        usage.record_resp(config.STRATEGY_MODEL, resp, "creative")
         text = next((b.text for b in resp.content if b.type == "text"), "{}")
         return json.loads(text)
     except Exception as e:

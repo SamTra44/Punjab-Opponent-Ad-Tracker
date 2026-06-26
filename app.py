@@ -349,6 +349,14 @@ def api_spend():
     return jsonify(archive.spend_tracker())
 
 
+@app.route("/api/usage")
+@login_required
+def api_usage():
+    """Super-admin billing — Claude (AI) ka token usage + estimated cost (INR)."""
+    import usage
+    return jsonify(usage.summary())
+
+
 @app.route("/api/export/archive")
 @login_required
 def api_export_archive():

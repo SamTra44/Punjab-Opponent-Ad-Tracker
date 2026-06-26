@@ -158,6 +158,8 @@ def generate_brief(ads):
             messages=[{"role": "user", "content": user_msg}],
             output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
         )
+        import usage
+        usage.record_resp(config.STRATEGY_MODEL, resp, "strategy")
         if resp.stop_reason == "max_tokens":
             log.warning("strategy brief hit max_tokens — output truncated")
         text = next((b.text for b in resp.content if b.type == "text"), "{}")

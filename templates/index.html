@@ -426,6 +426,27 @@
     #spendOverlay .pfill{height:100%;border-radius:6px}
     #spendOverlay canvas{max-height:230px;margin-top:6px}
     #spendOverlay .note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic}
+    /* ===================== AI BILLING MODAL ===================== */
+    #billOverlay{display:none;position:fixed;inset:0;z-index:99999;
+      background:rgba(5,8,12,.94);align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+    #billOverlay.show{display:flex}
+    #billOverlay .modal{display:block !important;width:100%;max-width:820px;height:auto !important;
+      background:#0f151d;border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+    #billOverlay .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;
+      border-bottom:1px solid var(--line);position:sticky;top:0;background:#0f151d;border-radius:16px 16px 0 0;z-index:2}
+    #billOverlay .mtitle{font-size:18px;font-weight:800}
+    #billOverlay .msub{font-size:11.5px;color:var(--muted);margin-top:2px}
+    #billOverlay .mbody{display:block;padding:20px 22px}
+    #billOverlay .bcards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    #billOverlay .bcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+    #billOverlay .bcard .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+    #billOverlay .bcard .v{font-size:28px;font-weight:900;color:#fff;margin-top:4px}
+    #billOverlay h4{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px}
+    #billOverlay table{width:100%;border-collapse:collapse;font-size:12.5px}
+    #billOverlay td,#billOverlay th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+    #billOverlay th{color:var(--muted);font-size:10.5px;text-transform:uppercase}
+    #billOverlay td.r,#billOverlay th.r{text-align:right}
+    #billOverlay .note{font-size:11px;color:var(--muted);margin-top:10px;font-style:italic}
   </style>
 </head>
 <body>
@@ -447,6 +468,7 @@
     <button class="topbtn" id="dmgBtn" style="border-color:rgba(255,93,108,.5);color:var(--danger)">🔥 Damage Radar</button>
     <button class="topbtn" id="trendsBtn" style="border-color:rgba(47,129,247,.5);color:var(--accent2)">📈 Trends</button>
     <button class="topbtn" id="strategyBtn" style="border-color:rgba(0,229,160,.5);color:var(--accent)">🧠 Strategy Brief</button>
+    <button class="topbtn" id="billBtn" style="border-color:rgba(255,217,176,.6);color:#ffd9b0" title="Super-admin — Claude AI billing">🔐 AI Billing</button>
     <button class="topbtn" id="exportBtn" style="border-color:rgba(31,193,107,.5);color:var(--sad)" title="Saari ads Excel mein download">⬇️ Excel</button>
     <button class="topbtn" id="refreshBtn">↻ Refresh</button>
     <a class="topbtn ghost" href="/logout">Logout</a>
@@ -495,6 +517,20 @@
         <button class="topbtn ghost" onclick="closeSpend()">✕ Close</button>
       </div>
       <div class="mbody" id="spendBody">
+        <div class="muted" style="font-size:12px">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== AI BILLING MODAL ===================== -->
+  <div id="billOverlay" onclick="if(event.target===this)closeBill()">
+    <div class="modal">
+      <div class="mhead">
+        <div><div class="mtitle">🔐 Super-Admin — AI Billing</div>
+          <div class="msub">Claude (Anthropic) ka kitna paisa kharch ho raha hai — token usage + cost</div></div>
+        <button class="topbtn ghost" onclick="closeBill()">✕ Close</button>
+      </div>
+      <div class="mbody" id="billBody">
         <div class="muted" style="font-size:12px">Loading…</div>
       </div>
     </div>
@@ -1433,6 +1469,34 @@
       document.getElementById("spendOverlay").classList.add("show");
       loadSpend();
     });
+    // ===================== AI BILLING (super-admin) =====================
+    function closeBill(){ document.getElementById("billOverlay").classList.remove("show"); }
+    document.getElementById("billBtn").addEventListener("click",()=>{
+      document.getElementById("billOverlay").classList.add("show"); loadBilling();
+    });
+    function loadBilling(){
+      const box=document.getElementById("billBody");
+      box.innerHTML='<div class="muted" style="font-size:12px">Loading…</div>';
+      getJSON("/api/usage").then(d=>{
+        if(!d.available){ box.innerHTML='<div class="empty">Abhi koi AI usage record nahi — jaise classification/strategy chalega, cost yahan dikhega.</div>'; return; }
+        const rs=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+        const M=t=>(Number(t||0)/1e6).toFixed(2)+"M";
+        let h='<div class="bcards">'+
+          '<div class="bcard"><div class="lbl">🟢 Aaj</div><div class="v">'+rs(d.today_inr)+'</div></div>'+
+          '<div class="bcard"><div class="lbl">📅 Is mahine</div><div class="v">'+rs(d.month_inr)+'</div></div>'+
+          '<div class="bcard"><div class="lbl">💰 Total (ab tak)</div><div class="v">'+rs(d.total.cost_inr)+'</div></div>'+
+          '</div>';
+        h+='<div class="muted" style="font-size:11.5px">Total '+Number(d.total.calls).toLocaleString("en-IN")+' AI calls · '+M(d.total.in_tok)+' in + '+M(d.total.out_tok)+' out tokens · rate ₹'+d.usd_inr+'/$</div>';
+        h+='<h4>📊 Model-wise</h4><table><tr><th>Model</th><th class="r">Calls</th><th class="r">In</th><th class="r">Out</th><th class="r">Cost</th></tr>';
+        (d.by_model||[]).forEach(m=>{ h+='<tr><td>'+esc(m.model)+'</td><td class="r">'+Number(m.calls).toLocaleString("en-IN")+'</td><td class="r">'+M(m.in_tok)+'</td><td class="r">'+M(m.out_tok)+'</td><td class="r"><b>'+rs(m.cost_inr)+'</b></td></tr>'; });
+        h+='</table>';
+        h+='<h4>🧩 Feature-wise</h4><table><tr><th>Feature</th><th class="r">Calls</th><th class="r">Cost</th></tr>';
+        (d.by_feature||[]).forEach(f=>{ h+='<tr><td>'+esc(f.feature)+'</td><td class="r">'+Number(f.calls).toLocaleString("en-IN")+'</td><td class="r"><b>'+rs(f.cost_inr)+'</b></td></tr>'; });
+        h+='</table>';
+        h+='<div class="note">📌 Cost = Anthropic ke public per-token rate × tokens, ₹'+d.usd_inr+'/$ pe. Estimate hai — actual Anthropic invoice se thoda alag ho sakta hai. (Sirf is tool ka AI kharch; server/team alag.)</div>';
+        box.innerHTML=h;
+      }).catch(e=>{ box.innerHTML='<div class="muted" style="font-size:12px">⚠️ '+esc(e.message||e)+'</div>'; });
+    }
     const PARTY_COL2={BJP:"#ff7a18",INC:"#19a7e0",SAD:"#1fc16b",AAP:"#3b6cff",OTHER:"#9aa6b2"};
     const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN");
     function spendPartyBars(bp){
