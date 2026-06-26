@@ -357,6 +357,13 @@ def api_usage():
     return jsonify(usage.summary())
 
 
+@app.route("/api/directory")
+@login_required
+def api_directory():
+    """Advertiser directory — har 'Paid for by' disclaimer ki ads/spend/stance."""
+    return jsonify(archive.directory())
+
+
 @app.route("/api/export/archive")
 @login_required
 def api_export_archive():

@@ -73,7 +73,7 @@ def _query(q, params=()):
 _DDL = """
 CREATE TABLE IF NOT EXISTS ads_archive (
     id TEXT PRIMARY KEY,
-    page TEXT, page_id TEXT, handle TEXT,
+    page TEXT, page_id TEXT, handle TEXT, bylines TEXT,
     party TEXT, source TEXT, stance TEXT,
     narrative TEXT, narrative_summary TEXT, theme TEXT,
     spend TEXT, impr TEXT, spend_mid REAL, impr_mid REAL,
@@ -86,12 +86,13 @@ CREATE TABLE IF NOT EXISTS ads_archive (
 
 
 def _migrate():
-    """Purane archive (jisme 'stop' column nahi) ke liye column add karo."""
-    try:
-        _write([("ALTER TABLE ads_archive ADD COLUMN stop TEXT", ())])
-        log.info("archive: added 'stop' (end date) column")
-    except Exception:
-        pass  # column already hai — sab theek
+    """Purane archive ke liye naye columns add karo (jo na hon)."""
+    for col in ("stop TEXT", "bylines TEXT"):
+        try:
+            _write([("ALTER TABLE ads_archive ADD COLUMN " + col, ())])
+            log.info("archive: added column %s", col)
+        except Exception:
+            pass  # column already hai — sab theek
 
 
 def _init():
@@ -111,7 +112,7 @@ except Exception as e:  # pragma: no cover
     log.warning("archive init failed: %s", e)
 
 
-_COLS = ("id,page,page_id,handle,party,source,stance,narrative,"
+_COLS = ("id,page,page_id,handle,bylines,party,source,stance,narrative,"
          "narrative_summary,theme,spend,impr,spend_mid,impr_mid,regions,"
          "platforms,audience,damage_level,started,stop,snapshot_url,text,"
          "first_seen,last_seen")
@@ -120,6 +121,7 @@ _COLS = ("id,page,page_id,handle,party,source,stance,narrative,"
 def _row_from_ad(a, seen):
     return (
         a.get("id", ""), a.get("page", ""), a.get("page_id", ""), a.get("handle", ""),
+        a.get("bylines", ""),
         a.get("party", ""), a.get("source", ""), a.get("stance", ""),
         a.get("narrative", "") or a.get("theme", ""), a.get("narrative_summary", ""),
         a.get("theme", ""), a.get("spend", ""), a.get("impr", ""),
@@ -139,7 +141,7 @@ def record_ads(ads, mode="live"):
     if mode != "live" or not ads:
         return
     seen = _now()
-    placeholders = ",".join([PH] * 24)
+    placeholders = ",".join([PH] * 25)
     insert_q = (
         "INSERT INTO ads_archive (%s, active, stopped_at) "
         "VALUES (%s, 1, NULL) "
@@ -152,7 +154,8 @@ def record_ads(ads, mode="live"):
         "spend_mid=excluded.spend_mid, impr_mid=excluded.impr_mid, "
         "damage_level=excluded.damage_level, audience=excluded.audience, "
         "regions=excluded.regions, platforms=excluded.platforms, "
-        "started=excluded.started, stop=excluded.stop"
+        "started=excluded.started, stop=excluded.stop, "
+        "bylines=excluded.bylines"
         % (_COLS, placeholders)
     )
     stop_q = ("UPDATE ads_archive SET active=0, stopped_at=%s "
@@ -222,6 +225,37 @@ def dashboard_ads(limit=None):
         r["is_punjab"] = True
         r.setdefault("plat", r.get("plat", []) or [])
     return rows
+
+
+def directory(limit=400):
+    """
+    Disclaimer ("Paid for by") directory: har funding entity / agency ki kitni
+    ads, kitna spend, against/support breakdown, party + Meta link (jahan
+    address/phone publicly dikhta hai). Record-keeping ke liye.
+    """
+    try:
+        rows = _query(
+            "SELECT bylines, COUNT(*) AS ads, "
+            "COALESCE(SUM(spend_mid),0) AS spend, "
+            "SUM(CASE WHEN stance='against' THEN 1 ELSE 0 END) AS ag, "
+            "SUM(CASE WHEN stance='support' THEN 1 ELSE 0 END) AS su, "
+            "SUM(CASE WHEN active=1 THEN 1 ELSE 0 END) AS act, "
+            "MAX(party) AS party, MAX(page_id) AS page_id "
+            "FROM ads_archive WHERE bylines IS NOT NULL AND bylines<>'' "
+            "GROUP BY bylines ORDER BY spend DESC LIMIT " + PH, (int(limit),))
+        adv = [{
+            "byline": r["bylines"], "ads": r["ads"],
+            "spend": round(float(r["spend"] or 0)),
+            "against": r["ag"] or 0, "support": r["su"] or 0,
+            "active": r["act"] or 0,
+            "party": r["party"] or "OTHER",
+            "page_id": r["page_id"] or "",
+        } for r in rows]
+        return {"available": True, "advertisers": adv,
+                "count": len(adv), "ads_total": sum(a["ads"] for a in adv)}
+    except Exception as e:
+        log.warning("directory failed: %s", e)
+        return {"available": False}
 
 
 def spend_tracker():

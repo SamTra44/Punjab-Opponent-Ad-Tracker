@@ -45,6 +45,7 @@ AD_FIELDS = ",".join([
     "id",
     "page_name",
     "page_id",
+    "bylines",                 # "Paid for by" disclaimer (funding entity)
     "ad_creative_bodies",
     "ad_creative_link_titles",
     "ad_delivery_start_time",

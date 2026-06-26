@@ -287,6 +287,13 @@ def _handle_from_name(page_name):
     return f"@{slug or 'page'}"
 
 
+def _byline(b):
+    """Meta 'bylines' (Paid for by) string ya list ho sakta hai -> clean string."""
+    if isinstance(b, list):
+        return ", ".join(str(x) for x in b if x)
+    return str(b or "").strip()
+
+
 def normalize_ad(raw):
     """Ek raw Meta ad object ko frontend format mein convert karo."""
     page_name = raw.get("page_name", "Unknown Page")
@@ -326,6 +333,7 @@ def normalize_ad(raw):
         "is_official": is_official,
         "page": page_name,
         "handle": _handle_from_name(page_name),
+        "bylines": _byline(raw.get("bylines")),
         "text": text,
         "spend": _fmt_range(spend_obj, cur_prefix),
         "spend_mid": _spend_midpoint(spend_obj),
