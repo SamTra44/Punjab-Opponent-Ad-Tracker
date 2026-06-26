@@ -166,6 +166,13 @@ def refresh_cache():
         archive.record_ads(payload.get("ads", []), payload.get("mode", "demo"))
     except Exception as e:
         log.warning("archive record skipped: %s", e)
+
+    # Fresh tracking: sirf is month + abhi chal rahi ads rakho — purani auto-delete.
+    if payload.get("mode") == "live":
+        try:
+            archive.purge_old()
+        except Exception as e:
+            log.warning("purge_old skipped: %s", e)
     log.info("Cache updated: mode=%s count=%s top_spender=%s",
              payload.get("mode"), payload.get("count"),
              payload.get("top_spender"))

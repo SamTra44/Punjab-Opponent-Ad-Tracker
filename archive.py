@@ -233,6 +233,30 @@ def dashboard_ads(limit=None):
     return rows
 
 
+def purge_old():
+    """
+    Lean tracking: sirf is month shuru hui (started >= mahine ka 1st) YA abhi chal
+    rahi (active=1) ads rakho. Baaki purani band ho chuki ads PERMANENTLY delete.
+    Har refresh ke baad chalta hai taaki database fresh + chhota rahe.
+    Deleted count return karta hai.
+    """
+    month_start = datetime.now(timezone.utc).date().replace(day=1).isoformat()
+    try:
+        before = _query("SELECT COUNT(*) AS n FROM ads_archive")[0]["n"]
+        _write([("DELETE FROM ads_archive WHERE active=0 AND "
+                 "COALESCE(NULLIF(started,''),'0000-00-00') < " + PH,
+                 (month_start,))])
+        after = _query("SELECT COUNT(*) AS n FROM ads_archive")[0]["n"]
+        n = before - after
+        if n:
+            log.info("purge_old: %d purani ads delete ki (kept active + "
+                     "started>=%s); ab %d ads.", n, month_start, after)
+        return n
+    except Exception as e:
+        log.warning("purge_old failed: %s", e)
+        return 0
+
+
 def directory(limit=400):
     """
     Disclaimer ("Paid for by") directory: har funding entity / agency ki kitni
