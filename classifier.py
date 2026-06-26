@@ -199,6 +199,30 @@ def _classify_batch(batch):
     return out
 
 
+def prime_cache(rows):
+    """
+    Archive ke pehle-se-classified ads se in-memory _CACHE seed karo.
+    Restart ke baad cache khali hota hai — isse poori 10k+ ads dobara classify
+    hone lagti thi (rate-limit -> 'unknown' -> archive corrupt). Yeh function
+    sirf GOOD stances seed karta hai, taaki refresh par woh dobara classify na
+    hon — sirf naye ya abhi-tak-unknown ads classify hon.
+    """
+    n = 0
+    for r in rows:
+        aid = r.get("id")
+        st = r.get("stance")
+        if aid and st in ("against", "support", "neutral"):
+            _CACHE[aid] = {
+                "stance": st,
+                "narrative": r.get("narrative") or "Other",
+                "narrative_summary": r.get("narrative_summary") or "",
+                "party": r.get("party") or "",
+            }
+            n += 1
+    log.info("classifier cache primed from archive: %d ads", n)
+    return n
+
+
 def enrich_ads(ads):
     """
     Har ad mein stance/narrative/narrative_summary fields add karta hai.

@@ -148,8 +148,14 @@ def record_ads(ads, mode="live"):
         "ON CONFLICT(id) DO UPDATE SET "
         "last_seen=excluded.last_seen, active=1, stopped_at=NULL, "
         "party=excluded.party, "
-        "stance=excluded.stance, narrative=excluded.narrative, "
-        "narrative_summary=excluded.narrative_summary, "
+        # NON-DESTRUCTIVE: agar naya classify fail ho (unknown/empty) to purana
+        # accha stance/narrative WIPE na ho — sirf valid value se update karo.
+        "stance=CASE WHEN excluded.stance IN ('against','support','neutral') "
+        "THEN excluded.stance ELSE ads_archive.stance END, "
+        "narrative=CASE WHEN COALESCE(excluded.narrative,'')<>'' "
+        "THEN excluded.narrative ELSE ads_archive.narrative END, "
+        "narrative_summary=CASE WHEN COALESCE(excluded.narrative_summary,'')<>'' "
+        "THEN excluded.narrative_summary ELSE ads_archive.narrative_summary END, "
         "spend=excluded.spend, impr=excluded.impr, "
         "spend_mid=excluded.spend_mid, impr_mid=excluded.impr_mid, "
         "damage_level=excluded.damage_level, audience=excluded.audience, "

@@ -513,6 +513,14 @@ def _seed_cache_from_archive():
             with _CACHE_LOCK:
                 CACHE.update(arch)
             log.info("Cache seeded from archive: %d real ads.", arch["count"])
+        # CRITICAL: classifier _CACHE ko archive ke good stances se prime karo.
+        # Warna restart ke baad refresh poori 10k+ ads dobara classify karta hai
+        # (rate-limit -> 'unknown' -> archive corrupt). Isse sirf naye/unknown
+        # ads classify honge, classified ads safe rahenge.
+        try:
+            classifier.prime_cache(archive.get_archive(status="all", limit=50000))
+        except Exception as e:
+            log.warning("prime classifier cache failed: %s", e)
     except Exception as e:
         log.warning("seed from archive failed: %s", e)
 
