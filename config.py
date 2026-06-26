@@ -234,7 +234,7 @@ PUNJAB_DISTRICTS = {
 # Client = AAP. Claude har ad ka text padh ke batata hai ki ad AAP ke against
 # hai, support mein hai, ya neutral — aur konse narrative theme mein hai.
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-CLASSIFY_MODEL = os.environ.get("CLASSIFY_MODEL", "claude-haiku-4-5")
+CLASSIFY_MODEL = os.environ.get("CLASSIFY_MODEL", "claude-opus-4-8")
 CLASSIFY_ENABLED = os.environ.get("CLASSIFY_ENABLED", "1") not in ("0", "false", "False")
 CLASSIFY_BATCH_SIZE = int(os.environ.get("CLASSIFY_BATCH_SIZE", "10"))   # ads per API call
 CLASSIFY_MAX_WORKERS = int(os.environ.get("CLASSIFY_MAX_WORKERS", "6"))  # parallel calls
