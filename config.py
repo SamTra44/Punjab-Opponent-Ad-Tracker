@@ -265,6 +265,11 @@ ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASS", "admin123")
 SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production-please")
 
+# Super-admin password — sirf AI Billing dashboard ke liye extra gate. Jab tak
+# sahi password na do, billing nahi dikhega (team members bhi bina iske na dekh
+# saken). Server .env mein SUPER_ADMIN_PASS set hota hai.
+SUPER_ADMIN_PASS = os.environ.get("SUPER_ADMIN_PASS", "")
+
 # DESKTOP_MODE: desktop app (local 127.0.0.1) mein login skip — kyunki yeh
 # user ke apne PC pe chalta hai, network pe expose nahi hota. desktop_app.py
 # yeh NI_DESKTOP=1 set karta hai. Railway/web pe yeh OFF rehta hai (auth chalu).

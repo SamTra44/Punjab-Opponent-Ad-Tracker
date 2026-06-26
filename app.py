@@ -352,7 +352,11 @@ def api_spend():
 @app.route("/api/usage")
 @login_required
 def api_usage():
-    """Super-admin billing — Claude (AI) ka token usage + estimated cost (INR)."""
+    """Super-admin billing — Claude (AI) ka token usage + estimated cost (INR).
+    Extra gate: SUPER_ADMIN_PASS sahi ho tab hi data, warna locked."""
+    key = request.args.get("key", "")
+    if config.SUPER_ADMIN_PASS and key != config.SUPER_ADMIN_PASS:
+        return jsonify({"available": False, "locked": True})
     import usage
     return jsonify(usage.summary())
 
