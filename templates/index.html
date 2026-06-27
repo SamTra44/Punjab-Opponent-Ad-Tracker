@@ -45,6 +45,8 @@
       box-shadow:0 0 0 0 rgba(0,229,160,.6);animation:pulse 1.8s infinite}
     @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,229,160,.6)}
       70%{box-shadow:0 0 0 10px rgba(0,229,160,0)}100%{box-shadow:0 0 0 0 rgba(0,229,160,0)}}
+    .live.paused{color:var(--warn);border-color:rgba(255,180,84,.4);background:rgba(255,180,84,.08)}
+    .live.paused .dot{background:var(--warn);box-shadow:none;animation:none}
     .demo-pill{color:var(--warn);border-color:rgba(255,180,84,.4);
       background:rgba(255,180,84,.08)}
     .demo-pill .dot{background:var(--warn);animation:none}
@@ -494,6 +496,7 @@
     <button class="topbtn" id="dirBtn" style="border-color:rgba(25,167,224,.6);color:#5cc6f0" title="Advertiser directory — Paid for by disclaimers">📇 Directory</button>
     <button class="topbtn" id="billBtn" style="border-color:rgba(255,217,176,.6);color:#ffd9b0" title="Super-admin — Claude AI billing">🔐 AI Billing</button>
     <button class="topbtn" id="exportBtn" style="border-color:rgba(31,193,107,.5);color:var(--sad)" title="Saari ads Excel mein download">⬇️ Excel</button>
+    <button class="topbtn" id="trackBtn" title="Tracking on/off — band hone pe na Meta fetch, na Claude AI cost">⏯️ Tracking</button>
     <button class="topbtn" id="refreshBtn">↻ Refresh</button>
     <a class="topbtn ghost" href="/logout">Logout</a>
   </header>
@@ -1760,6 +1763,41 @@
       }catch(e){}
       btn.textContent = "↻ Refresh"; btn.disabled = false;
     });
+
+    // ===================== START / STOP TRACKING =====================
+    function paintTracking(on){
+      const b=document.getElementById("trackBtn");
+      const ind=document.getElementById("liveInd"), txt=document.getElementById("liveText");
+      if(on){
+        b.textContent="⏸️ Stop Tracking";
+        b.style.borderColor="rgba(255,93,108,.6)"; b.style.color="#ff8a94";
+        if(txt) txt.textContent="Live Monitoring";
+        if(ind) ind.classList.remove("paused");
+      }else{
+        b.textContent="▶️ Start Tracking";
+        b.style.borderColor="rgba(0,229,160,.6)"; b.style.color="var(--accent)";
+        if(txt) txt.textContent="⏸ Tracking Paused";
+        if(ind) ind.classList.add("paused");
+      }
+    }
+    function refreshTracking(){
+      getJSON("/api/tracking").then(d=>paintTracking(d.tracking!==false)).catch(()=>{});
+    }
+    document.getElementById("trackBtn").addEventListener("click",async()=>{
+      const b=document.getElementById("trackBtn");
+      const turningOn = b.textContent.indexOf("Start")>=0;
+      if(!turningOn && !confirm("Tracking band karein?\n\nNaye Meta fetch + Claude AI classify ruk jayega (cost bachega). Dashboard ka data dikhta rahega — bas naya data nahi aayega jab tak Start na karo."))
+        return;
+      b.disabled=true;
+      try{
+        const d=await fetch("/api/tracking",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({on:turningOn})}).then(x=>x.json());
+        paintTracking(d.tracking!==false);
+        if(turningOn){ setTimeout(()=>loadAds(true), 1500); }
+      }catch(e){}
+      b.disabled=false;
+    });
+    refreshTracking();
 
     // ===================== BOOT =====================
     // loadAds khud ready hone tak poll karta hai, phir 6hr interval set karta hai.

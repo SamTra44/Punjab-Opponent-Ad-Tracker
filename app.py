@@ -80,6 +80,36 @@ CACHE = {
 }
 _CACHE_LOCK = threading.Lock()
 
+# =============================================================================
+# Tracking ON/OFF — dashboard se start/stop. Band hone pe koi Meta fetch / Claude
+# classify nahi hota (cost bachta hai). State file mein save hota hai taaki
+# restart ke baad bhi yaad rahe.
+# =============================================================================
+_STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_STATE_FILE = os.path.join(_STATE_DIR, "state.json")
+
+
+def _load_tracking():
+    try:
+        import json
+        with open(_STATE_FILE) as f:
+            return bool(json.load(f).get("tracking", True))
+    except Exception:
+        return True  # default: tracking ON
+
+
+def _save_tracking(on):
+    try:
+        import json
+        os.makedirs(_STATE_DIR, exist_ok=True)
+        with open(_STATE_FILE, "w") as f:
+            json.dump({"tracking": bool(on)}, f)
+    except Exception as e:
+        log.warning("save tracking state failed: %s", e)
+
+
+TRACKING_ENABLED = _load_tracking()
+
 
 def _payload_from_archive(errors):
     """
@@ -121,6 +151,9 @@ def _payload_from_archive(errors):
 
 def refresh_cache():
     """Meta se fresh data laao aur CACHE update karo (thread-safe)."""
+    if not TRACKING_ENABLED:
+        log.info("Tracking band hai — refresh skip (na Meta fetch, na AI cost).")
+        return
     log.info("Refreshing ad cache from Meta Ad Library...")
     try:
         payload = meta_api.fetch_all_ads()
@@ -243,7 +276,28 @@ def api_refresh():
         data = dict(CACHE)
     return jsonify({"ok": True, "mode": data.get("mode"),
                     "count": data.get("count"),
-                    "updated_at": data.get("updated_at")})
+                    "updated_at": data.get("updated_at"),
+                    "tracking": TRACKING_ENABLED})
+
+
+@app.route("/api/tracking", methods=["GET", "POST"])
+@login_required
+def api_tracking():
+    """Tracking ON/OFF. POST {on:true/false} -> set; GET -> current state.
+    OFF hone pe scheduler/refresh kuch fetch ya classify nahi karega."""
+    global TRACKING_ENABLED
+    if request.method == "POST":
+        if request.is_json:
+            on = bool((request.get_json(silent=True) or {}).get("on"))
+        else:
+            on = request.form.get("on") in ("1", "true", "on", "yes")
+        TRACKING_ENABLED = on
+        _save_tracking(on)
+        log.info("Tracking %s by admin.", "ON" if on else "OFF")
+        if on:
+            # Resume -> turant ek fresh fetch background mein chala do.
+            threading.Thread(target=refresh_cache, daemon=True).start()
+    return jsonify({"tracking": TRACKING_ENABLED})
 
 
 @app.route("/api/translate", methods=["POST"])
