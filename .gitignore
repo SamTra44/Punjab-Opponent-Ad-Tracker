@@ -1,6 +1,10 @@
 # Secrets — kabhi commit mat karo
 .env
 .env.local
+TEAM_CREDENTIALS.md
+*.creds
+creds*.json
+secrets*.json
 
 # Test/IDE artifacts
 cookies.txt
